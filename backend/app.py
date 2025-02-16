@@ -45,9 +45,6 @@ cfg1.MODEL.DEVICE = "cpu"
 annotation_dataset_name = "annotation_dataset_train"
 cfg1.DATASETS.TRAIN = (annotation_dataset_name,)
 
-# class_names = ["title", "legend"]
-# MetadataCatalog.get(cfg1.DATASETS.TRAIN[0]).thing_classes = class_names
-# train_metadata_annotation = MetadataCatalog.get(cfg1.DATASETS.TRAIN[0])
 MetadataCatalog.get(annotation_dataset_name).thing_classes = ["title", "legend"]
 train_metadata_annotation = MetadataCatalog.get(annotation_dataset_name)
 
@@ -74,8 +71,8 @@ train_metadata_states = MetadataCatalog.get(states_dataset_name)
 model_states = DefaultPredictor(cfg2) #Detectron2 model for segmentation of states
 
 
-# OCR model
-ocr_model = PaddleOCR(lang='en')
+# # OCR model
+# ocr_model = PaddleOCR(lang='en')
 
 
 
@@ -102,9 +99,10 @@ def clear_folder_contents(folder_path):
             print(f"Error clearing {file_path}: {e}")
 
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "System is Online", "status": "Success"})
+
+# @app.route("/", methods=["GET"])
+# def home():
+#     return jsonify({"message": "System is Online", "status": "Success"})
 
 # For RESNET:
 def preprocess_image(filepath):
@@ -172,6 +170,9 @@ def predict():
     if not files or all(file.filename == "" for file in files):
         return jsonify({"error": "No files selected"}), 400
 
+    # Clearing Folder contents of the session
+    clear_folder_contents(OUTPUT_FOLDER)
+    clear_folder_contents(UPLOAD_FOLDER)
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -304,6 +305,9 @@ def predict_stream():
         print("\nSegmentation of all images completed.")
 #-----------------------------------------------------------------------------------------------
         # OCR MODEL FOR TEXT EXTRACTION
+        # OCR model
+        ocr_model = PaddleOCR(lang='en')
+
         df1 = pd.read_csv("outputs/classification.csv")
         df2 = pd.read_csv("outputs/output_objects.csv")
         annotations_df = pd.merge(df2, df1, on="file name")
@@ -451,7 +455,7 @@ def predict_stream():
         }
         df = df.rename(columns=new_column_names)
         df.to_csv("outputs/OCR_output.csv", index = False)
-        
+
         progress_updates[4]["status"] = "completed"
         progress_updates[5]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
@@ -609,6 +613,6 @@ def download_results():
         abort(404, description="File not found")
 
 if __name__ == "__main__":
-    app.run(debug=True,use_reloader=False)
+    app.run(debug=False,use_reloader=False)
 
 

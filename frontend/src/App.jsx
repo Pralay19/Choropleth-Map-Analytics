@@ -1,20 +1,19 @@
-//--------------------------------------------------------------------------------------
 import React, { useState } from "react";
 import axios from "axios";
+import "./App.css"; 
 
 function App() {
   const [files, setFiles] = useState([]);
   const [progress, setProgress] = useState([]);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
-  const [eventSource, setEventSource] = useState(null);
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
     setFiles(Array.from(e.target.files));
   };
 
-  // Handle file upload and set up SSE for updates from the backend
+  
   const handleUpload = async () => {
     if (!files || files.length === 0) {
       alert("Please select one or more files.");
@@ -31,12 +30,12 @@ function App() {
       setProgress([]);
       setResults(null);
 
-      // Upload the files to the backend
+      
       await axios.post("http://127.0.0.1:5000/predict", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Set up Server-Sent Events (SSE) to receive progress updates and final results
+      
       const source = new EventSource("http://127.0.0.1:5000/predict-stream");
 
       source.onmessage = (event) => {
@@ -46,7 +45,7 @@ function App() {
           if (data.progress) {
             setProgress(data.progress);
           }
-          // When final results are available, update state and close the SSE connection
+          
           if (data.Results) {
             setResults(data.Results);
             source.close();
@@ -60,22 +59,19 @@ function App() {
         source.close();
         setError("Error receiving updates");
       };
-
-      setEventSource(source);
     } catch (err) {
       console.error(err);
       setError("Error uploading file(s)");
     }
   };
 
-  // Handle the download button click to trigger the download route on the backend
+  
   const handleDownload = async () => {
     try {
-      // Send a GET request to the backend download route
       const response = await axios.get("http://127.0.0.1:5000/download", {
         responseType: "blob", // Important for handling binary data
       });
-      // Create a URL for the blob and simulate a click to download the file
+      
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -89,37 +85,57 @@ function App() {
     }
   };
 
-  // Dynamically render the table based on the results data (keys and values)
+  
+  const renderStepper = () => {
+  
+    return (
+      <div className="stepper-container">
+        
+        <div className="stepper-line" />
+        {/* Render each step */}
+        {progress.map((stepObj, index) => {
+          const isCompleted = stepObj.status === "completed";
+          const isProcessing = stepObj.status === "processing";
+          const isPending = stepObj.status === "pending";
+
+          let circleClass = "step-circle";
+          if (isCompleted) circleClass += " step-completed";
+          if (isProcessing) circleClass += " step-processing";
+          if (isPending) circleClass += " step-pending";
+
+          return (
+            <div className="step-item" key={index}>
+              <div className={circleClass}>
+                {isCompleted && <span className="check-mark">&#10003;</span>}
+                {isProcessing && <span className="processing-animation" />}
+              </div>
+              <div className="step-label">{stepObj.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  
   const renderTable = () => {
     if (!results || !Array.isArray(results) || results.length === 0) return null;
-    const headers = Object.keys(results[0]); // Extract column names dynamically
+    const headers = Object.keys(results[0]); 
 
     return (
-      <table
-        style={{
-          margin: "auto",
-          borderCollapse: "collapse",
-          width: "90%",
-          marginTop: "20px",
-        }}
-        border="1"
-      >
+      <table className="results-table">
         <thead>
           <tr>
             {headers.map((header, idx) => (
-              <th key={idx} style={{ padding: "8px", background: "#f2f2f2" }}>
-                {header}
-              </th>
+              <th key={idx}>{header}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {results.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <tr key={rowIndex} className={rowIndex % 2 ? "row-odd" : "row-even"}>
               {headers.map((header, cellIndex) => (
-                <td key={cellIndex} style={{ padding: "8px" }}>
-                  {row[header]}
-                </td>
+                <td key={cellIndex}>{row[header]}</td>
               ))}
             </tr>
           ))}
@@ -129,33 +145,27 @@ function App() {
   };
 
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
-      <h2>Flask AI Prediction</h2>
-      <input type="file" multiple onChange={handleFileChange} />
-      <button onClick={handleUpload} style={{ marginLeft: "10px" }}>
-        Upload
-      </button>
+    <div className="app-container">
+      <h2 className="title">Choropleth Map Analytics</h2>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {/* File Upload Form */}
+      <div className="form-container">
+        <input type="file" multiple onChange={handleFileChange} />
+        <button onClick={handleUpload} className="gradient-button upload-btn">
+          Upload
+        </button>
+      </div>
 
-      <h3>Progress</h3>
-      <ul>
-        {progress.map((step, index) => (
-          <li
-            key={index}
-            style={{ color: step.status === "completed" ? "green" : "black" }}
-          >
-            {step.label}: {step.status}
-          </li>
-        ))}
-      </ul>
+      
+      {error && <p className="error-message">{error}</p>}
+
+      {progress && progress.length > 0 && renderStepper()}
 
       {results && (
-        <div>
-          <h3>Results</h3>
+        <div className="results-section">
+          <h3 className="subtitle">Results</h3>
           {renderTable()}
-          {/* Show Download Results button only when results are available */}
-          <button onClick={handleDownload} style={{ marginTop: "20px" }}>
+          <button onClick={handleDownload} className="gradient-button download-btn">
             Download Results
           </button>
         </div>
@@ -165,4 +175,3 @@ function App() {
 }
 
 export default App;
-
