@@ -192,12 +192,11 @@ def predict_stream():
 
         progress_updates = [
             {"step": 1, "label": "Upload Images", "status": "completed"},
-            {"step": 2, "label": "Classification of Map Legend type(Discrete/Continous)", "status": "processing"},
+            {"step": 2, "label": "Classification of Map Legend Type", "status": "processing"},
             {"step": 3, "label": "Segmentation of Map Components", "status": "processing"},
             {"step": 4, "label": "Segmentation of State Boundaries", "status": "processing"},
             {"step": 5, "label": "OCR Text Data Extraction", "status": "processing"},
-            {"step": 6, "label": "Color-to-Data Mapping", "status": "processing"},
-            {"step": 7, "label": "Download Result", "status": "pending"},
+            {"step": 6, "label": "Color-to-Data Mapping", "status": "processing"}
         ]
 
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
@@ -247,6 +246,7 @@ def predict_stream():
                     writer.writerow([filename, img_type])
         
         progress_updates[1]["status"] = "completed"
+        progress_updates[2]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print(f"\nPredictions saved to {csv_file}")
 #-----------------------------------------------------------------------------------------------
@@ -256,6 +256,7 @@ def predict_stream():
         data_annotation = process_images(UPLOAD_FOLDER)
         generate_csv(data_annotation, output_csv_path)
         progress_updates[2]["status"] = "completed"
+        progress_updates[3]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("Processed output saved to CSV.")
 #-----------------------------------------------------------------------------------------------
@@ -297,6 +298,7 @@ def predict_stream():
                     csvwriter.writerow([image_filename, class_name, object_number, centroid, bounding_box, rgb_color])
 
         progress_updates[3]["status"] = "completed"
+        progress_updates[4]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("\nObject-level information saved to CSV file.")
         print("\nSegmentation of all images completed.")
@@ -451,6 +453,7 @@ def predict_stream():
         df.to_csv("outputs/OCR_output.csv", index = False)
         
         progress_updates[4]["status"] = "completed"
+        progress_updates[5]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("OCR output is saved.")
 #------------------------------------------------------------------------------------------------
@@ -572,7 +575,6 @@ def predict_stream():
         df.to_csv(output_file_path, index=False)
 
         progress_updates[5]["status"] = "completed"
-        progress_updates[6]["status"] = "completed"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("\nColor-to-data mapping completed")
 #------------------------------------------------------------------------------------------------
@@ -586,7 +588,6 @@ def predict_stream():
 
 
         
-
         yield f"data: {final_data}\n\n"
         sys.stdout.flush()
 
