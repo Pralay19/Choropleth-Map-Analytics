@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./App.css"; 
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
 
 function App() {
   const [files, setFiles] = useState([]);
@@ -155,6 +157,24 @@ function App() {
           Upload
         </button>
       </div>
+      {/* <form>
+        <TextField
+          type="file"
+          variant="outlined"
+          inputRef={(input) => {
+            if (input) {
+              input.accept = "image/*";
+              input.multiple = true;
+            }
+          }}
+          onChange={handleFileChange}
+          fullWidth
+          margin="normal"
+        />
+        <Button variant="contained" color="primary" type="submit" onClick={handleUpload} >
+          Upload
+        </Button>
+    </form> */}
 
       
       {error && <p className="error-message">{error}</p>}

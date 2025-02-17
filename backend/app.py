@@ -192,12 +192,12 @@ def predict_stream():
             return
 
         progress_updates = [
-            {"step": 1, "label": "Upload Images", "status": "completed"},
+            {"step": 1, "label": "Uploading Images to Server", "status": "completed"},
             {"step": 2, "label": "Classification of Map Legend Type", "status": "processing"},
             {"step": 3, "label": "Segmentation of Map Components", "status": "processing"},
             {"step": 4, "label": "Segmentation of State Boundaries", "status": "processing"},
-            {"step": 5, "label": "OCR Text Data Extraction", "status": "processing"},
-            {"step": 6, "label": "Color-to-Data Mapping", "status": "processing"}
+            {"step": 5, "label": "Text Data Extraction using OCR", "status": "processing"},
+            {"step": 6, "label": "State Color to Legend Data Mapping", "status": "processing"}
         ]
 
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
