@@ -1,3 +1,4 @@
+
 .app-container {
     min-height: 100vh;
     margin: 0;
@@ -29,43 +30,6 @@
     gap: 10px;
   }
   
-  .visualization-container {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  .controls {
-    margin: 20px 0;
-    text-align: center;
-  }
-  
-  .column-selector {
-    padding: 10px;
-    font-size: 16px;
-    min-width: 300px;
-  }
-  
-  .comparison-view {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    margin-top: 20px;
-  }
-  
-  .original-image {
-    max-width: 100%;
-    height: auto;
-    border: 1px solid #ddd;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  .choropleth-section {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
   
   .error-message {
     color: red;
@@ -93,7 +57,6 @@
   }
   .download-btn {
     background: linear-gradient(90deg, #66bb6a 0%, #43a047 100%);
-    margin-bottom: 20px;
   }
   
   

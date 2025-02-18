@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------------------
-from flask import Flask, request, jsonify, Response, stream_with_context, send_from_directory
+from flask import Flask, request, jsonify, Response, stream_with_context
 from flask import send_file, abort
 from flask_cors import CORS
 import tensorflow as tf
@@ -157,6 +157,7 @@ def generate_csv(data, output_path):
 
 
 uploaded_files = []
+
 @app.route("/predict", methods=["POST"])
 def predict():
     global uploaded_files
@@ -171,7 +172,7 @@ def predict():
 
     # Clearing Folder contents of the session
     clear_folder_contents(OUTPUT_FOLDER)
-    clear_folder_contents(UPLOAD_FOLDER) 
+    clear_folder_contents(UPLOAD_FOLDER)
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -203,7 +204,7 @@ def predict_stream():
         yield ""
 
         results = []
-        global final_results_ready
+        
         # RESNET MODEL BATCH PROCESSING
         csv_file = os.path.join(OUTPUT_FOLDER, "classification.csv")
         with open(csv_file, mode='w', newline='') as file:
@@ -561,7 +562,7 @@ def predict_stream():
 #------------------------------------------------------------------------------------------------
         # Sending results to the frontend
         results = df.to_dict(orient='records')
-        # print(results)
+
         final_data = json.dumps({
             "Results": results,
             "progress": progress_updates,
@@ -569,6 +570,7 @@ def predict_stream():
         })
 
 
+        
         yield f"data: {final_data}\n\n"
         sys.stdout.flush()
 

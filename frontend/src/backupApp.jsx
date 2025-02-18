@@ -1,10 +1,4 @@
 import React, { useState } from "react";
-import { 
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link
-} from 'react-router-dom';
 import axios from "axios";
 import "./App.css"; 
 import UsaChoroplethMaps from "./UsaChoroplethMaps.jsx";
@@ -15,6 +9,7 @@ function App() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
 
+  const [mapColorScale, setMapColorScale] = useState('Reds');
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
@@ -153,48 +148,59 @@ function App() {
   };
 
   return (
-    <Router>
-      <div className="app-container">
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <>
-                <h2 className="title">Choropleth Map Analytics</h2>
-                
-                {/* File Upload Form */}
-                {progress.length<=0 && (<div className="form-container">
-                  <input type="file" multiple onChange={handleFileChange} />
-                  <button onClick={handleUpload} className="gradient-button upload-btn">
-                    Upload
-                  </button>
-                </div>)}
+    <div className="app-container">
+      <h2 className="title">Choropleth Map Analytics</h2>
 
-                {error && <p className="error-message">{error}</p>}
+      {/* File Upload Form */}
+      {progress.length<=0 && (<div className="form-container">
+        <input type="file" multiple onChange={handleFileChange} />
+        <button onClick={handleUpload} className="gradient-button upload-btn">
+          Upload
+        </button>
+      </div>)}
 
-                {progress && progress.length > 0 && renderStepper()}
+      
+      {error && <p className="error-message">{error}</p>}
 
-                {results && (
-                  <div className="results-section">
-                    <h3 className="subtitle">Results</h3>
-                    {renderTable()}
-                    <Link to="/visualize">
-                      <button className="gradient-button visualize-btn">
-                        View Visualizations
-                      </button>
-                    </Link>
-                    <button onClick={handleDownload} className="gradient-button download-btn">
-                      Download Results
-                    </button>
-                  </div>
-                )}
-              </>
-            } 
-          />
-          <Route path="/visualize" element={<UsaChoroplethMaps parsedData={JSON.parse(JSON.stringify(results))} files={files} />} />
-        </Routes>
-      </div>
-    </Router>
+      {progress && progress.length > 0 && renderStepper()}
+
+      {results && (
+          <>
+            <div className="results-section">
+              <h3 className="subtitle">Results</h3>
+              {renderTable()}
+              <button onClick={handleDownload} className="gradient-button download-btn">
+                Download Results
+              </button>
+            </div>
+
+            <div>
+              <label htmlFor="colorScale">Select Color Scale: </label>
+              <select
+                  id="colorScale"
+                  value={mapColorScale}
+                  onChange={(e) => setMapColorScale(e.target.value)}
+              >
+                <option value="Reds">Reds</option>
+                <option value="Viridis">Viridis</option>
+                <option value="YlGnBu">YlGnBu</option>
+                <option value="Hot">Hot</option>
+                <option value="RdBu">RdBu</option>
+                <option value="Portland">Portland</option>
+                <option value="Picnic">Picnic</option>
+                <option value="Jet">Jet</option>
+                <option value="Bluered">Bluered</option>
+              </select>
+            </div>
+
+            <UsaChoroplethMaps
+                parsedData={JSON.parse(JSON.stringify(results))}
+                colorscale={mapColorScale}
+                files={files}
+            />
+          </>
+      )}
+    </div>
   );
 }
 
