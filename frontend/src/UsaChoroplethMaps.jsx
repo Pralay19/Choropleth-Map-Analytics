@@ -139,15 +139,17 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
             <h3 className="text-2xl font-bold mb-6">Original Map VS Reconstructed Interactive Map</h3>
             <div style={{display: 'flex', direction: 'column',gap:'20px'}}>
                 <div style={{width: '50%'}}>
-                    {/* {JSON.stringify(fileNamesInOrder)}
-                    {JSON.stringify(mappedFiles)} */}
+                    <div><h2>ORIGINAL IMAGE</h2></div>
                     {Object.keys(mappedFiles).length >0 && fileNamesInOrder.map((fileName, i) => (
-                        <img key={i} src={URL.createObjectURL(mappedFiles[fileName])} alt={fileName} style={{marginBottom:'25px'}} />
+                        <div key={i} style={{marginBottom:'55px'}} > <img src={URL.createObjectURL(mappedFiles[fileName])} alt={fileName} />
+                            <h3><u>{fileName}</u></h3>
+                        </div>
                     ))}
                 </div>
                 <div style={{width: '50%'}}>
+                    <div><h2>RECONSTRUCTED CHOROPLETH</h2></div>
                     {maps.map(map => (
-                        <div key={map.id} id={map.id} className="map-container mb-10 h-96" style={{marginBottom:'25px'}}></div>
+                        <div id={map.id} className="map-container mb-10 h-96" style={{marginBottom:'100px'}}></div>
                     ))}
                 </div>
             </div>

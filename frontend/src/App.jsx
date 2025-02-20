@@ -151,7 +151,9 @@ function App() {
       </table>
     );
   };
-
+  const handleVisualizeClick = () => {
+    window.scrollTo(0, 0); // Scroll to top-left
+  };
   return (
     <Router>
       <div className="app-container">
@@ -179,7 +181,7 @@ function App() {
                     <h3 className="subtitle">Results</h3>
                     {renderTable()}
                     <Link to="/visualize">
-                      <button className="gradient-button visualize-btn">
+                      <button className="gradient-button visualize-btn" onClick={handleVisualizeClick}>
                         View Visualizations
                       </button>
                     </Link>
