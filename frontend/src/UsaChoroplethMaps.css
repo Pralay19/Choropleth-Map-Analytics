@@ -1,0 +1,11 @@
+.usa-choropleth-container > .tool-ribbon {
+    display: flex;
+}
+
+.original-image {
+    border-radius: 10px;
+}
+
+.reconstructed-map {
+    border-radius: 10px;
+}

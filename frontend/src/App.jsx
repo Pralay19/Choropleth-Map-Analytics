@@ -9,7 +9,20 @@ import axios from "axios";
 import "./App.css"; 
 import UsaChoroplethMaps from "./UsaChoroplethMaps.jsx";
 
+import "primereact/resources/themes/lara-light-amber/theme.css";
+// import "primereact/resources/themes/lara-light-teal/fonts/InterVariable.woff2"
+import "primeicons/primeicons.css"
+
+import { PrimeReactProvider } from 'primereact/api';
+import { FileUpload } from 'primereact/fileupload';
+
 function App() {
+  // confiuration for prime react
+  const primeReactConfig = {
+    ripple: true,
+    CSSTransition: true,
+  }
+
   const [files, setFiles] = useState([]);
   const [progress, setProgress] = useState([]);
   const [results, setResults] = useState(null);
@@ -18,7 +31,7 @@ function App() {
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
-    setFiles(Array.from(e.target.files));
+    setFiles(Array.from(e.files));
   };
 
   
@@ -151,25 +164,33 @@ function App() {
       </table>
     );
   };
+
   const handleVisualizeClick = () => {
     window.scrollTo(0, 0); // Scroll to top-left
   };
   return (
+      <PrimeReactProvider value={primeReactConfig}>
     <Router>
       <div className="app-container">
         <Routes>
-          <Route 
-            path="/" 
+          <Route
+            path="/"
             element={
               <>
                 <h2 className="title">Choropleth Map Analytics</h2>
-                
+                <p>Reverse Enginnering</p>
+
                 {/* File Upload Form */}
                 {progress.length<=0 && (<div className="form-container">
-                  <input type="file" multiple onChange={handleFileChange} />
-                  <button onClick={handleUpload} className="gradient-button upload-btn">
-                    Upload
-                  </button>
+                  <FileUpload
+                      multiple
+                      accept="image/*"
+                      onSelect={handleFileChange}
+                      onClear={() => setFiles([])}
+                      onRemove={(e) => setFiles(files.filter((f) => f !== e.file))}
+                      customUpload={true}
+                      uploadHandler={handleUpload}
+                  />
                 </div>)}
 
                 {error && <p className="error-message">{error}</p>}
@@ -180,23 +201,27 @@ function App() {
                   <div className="results-section">
                     <h3 className="subtitle">Results</h3>
                     {renderTable()}
-                    <Link to="/visualize">
-                      <button className="gradient-button visualize-btn" onClick={handleVisualizeClick}>
-                        View Visualizations
+
+                    <div className="action-buttons">
+                      <Link to="/visualize">
+                        <button className="gradient-button visualize-btn" onClick={handleVisualizeClick}>
+                          View Visualizations
+                        </button>
+                      </Link>
+                      <button onClick={handleDownload} className="gradient-button download-btn">
+                        Download Results
                       </button>
-                    </Link>
-                    <button onClick={handleDownload} className="gradient-button download-btn">
-                      Download Results
-                    </button>
+                    </div>
                   </div>
                 )}
               </>
-            } 
+            }
           />
           <Route path="/visualize" element={<UsaChoroplethMaps parsedData={JSON.parse(JSON.stringify(results))} files={files} />} />
         </Routes>
       </div>
     </Router>
+      </PrimeReactProvider>
   );
 }
 

@@ -1,9 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@300;400;700&display=swap');
+
 .app-container {
     min-height: 100vh;
     margin: 0;
     padding: 30px;
     background: linear-gradient(135deg, #f0f2f4 0%, #c9d6ff 100%);
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Poppins", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     text-align: center;
   }
   
@@ -199,9 +203,15 @@
   
   
   .results-section {
-    margin-top: 30px;
+    margin-top: 70px;
   }
-  
+
+  .results-section > .action-buttons {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
   
   .results-table {
     margin: 20px auto;

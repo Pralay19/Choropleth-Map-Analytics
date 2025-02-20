@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import Plotly from 'plotly.js-dist-min';
+import {Link} from "react-router-dom";
+
+import "./UsaChoroplethMaps.css"
+
+import { Dropdown } from 'primereact/dropdown';
+import { Button } from 'primereact/button';
+
 
 const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
     const [maps, setMaps] = useState([]);
@@ -9,13 +16,23 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
 
 
     const [fileNamesInOrder, setFileNamesInOrder] = useState([])
-    console.log(files)
+
+    const colorScaleOptionsList = [
+        {label: "Reds", value: "Reds"},
+        {label: "Blues", value: "Blues"},
+        {label: "Viridis", value: "Viridis"},
+        {label: "YlGnBu", value: "YlGnBu"},
+        {label: "Hot", value: "Hot"},
+        {label: "RdBu", value: "RdBu"},
+        {label: "Portland", value: "Portland"},
+        {label: "Picnic", value: "Picnic"},
+        {label: "Jet", value: "Jet"},
+        {label: "Bluered", value: "Bluered"}
+    ]
+
     useEffect(() => {
         if(!parsedData || parsedData.length <= 0) return;
 
-        
-        // console.log(Object.values(parsedData.splice(-1)[0]).slice(1)+" HELLO")
-        // setFileNamesInOrder(Object.values(parsedData.splice(-1)[0]).slice(1));
         setFileNamesInOrder(Object.values(parsedData.slice(-1)[0]).slice(1));
 
 
@@ -89,7 +106,12 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
                 height: 500
             };
 
-            Plotly.newPlot(map.id, plotData, layout, {responsive: true});
+            const config = {
+                responsive: true,
+                displayModeBar: true
+            }
+
+            Plotly.newPlot(map.id, plotData, layout, config);
         });
     }, [maps,mapColorScale]);
 
@@ -117,44 +139,52 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
 
     return (
         <div className="usa-choropleth-container">
-            <div>
-              <label htmlFor="colorScale">Select Color Scale: </label>
-              <select
-                  id="colorScale"
-                  value={mapColorScale}
-                  onChange={(e) => setMapColorScale(e.target.value)}
-              >
-                <option value="Reds">Reds</option>
-                <option value="Blues">Blues</option>
-                <option value="Viridis">Viridis</option>
-                <option value="YlGnBu">YlGnBu</option>
-                <option value="Hot">Hot</option>
-                <option value="RdBu">RdBu</option>
-                <option value="Portland">Portland</option>
-                <option value="Picnic">Picnic</option>
-                <option value="Jet">Jet</option>
-                <option value="Bluered">Bluered</option>
-              </select>
+            <div className="tool-ribbon">
+                <Link to="/">
+                    <Button icon="pi pi-arrow-left" aria-label="Back" raised />
+                </Link>
             </div>
-            <h3 className="text-2xl font-bold mb-6">Original Map VS Reconstructed Interactive Map</h3>
+            <div>
+                <label htmlFor="colorScale">Select Color Scale: </label>
+                <Dropdown
+                    id="colorScale"
+                    value={mapColorScale}
+                    onChange={(e) => setMapColorScale(e.value)}
+                    options={colorScaleOptionsList}
+                    placeholder="Select a Color Scale"
+                />
+            </div>
+
             <div style={{display: 'flex', direction: 'column',gap:'20px'}}>
                 <div style={{width: '50%'}}>
                     <div><h2>ORIGINAL IMAGE</h2></div>
-                    {Object.keys(mappedFiles).length >0 && fileNamesInOrder.map((fileName, i) => (
-                        <div key={i} style={{marginBottom:'55px'}} > <img src={URL.createObjectURL(mappedFiles[fileName])} alt={fileName} />
-                            <h3><u>{fileName}</u></h3>
-                        </div>
-                    ))}
+
+                    <div>
+                        {Object.keys(mappedFiles).length >0 && fileNamesInOrder.map((fileName, i) => (
+                            <div key={i} style={{marginBottom:'55px'}} >
+                                <img src={URL.createObjectURL(mappedFiles[fileName])} alt={fileName} className="original-image" />
+                                <h3><u>{fileName}</u></h3>
+                            </div>
+                        ))}
+                    </div>
                 </div>
                 <div style={{width: '50%'}}>
                     <div><h2>RECONSTRUCTED CHOROPLETH</h2></div>
-                    {maps.map(map => (
-                        <div id={map.id} className="map-container mb-10 h-96" style={{marginBottom:'100px'}}></div>
-                    ))}
+
+                    <div>
+                        {maps.map(map => (
+                            <div id={map.id} className="map-container mb-10 h-96 reconstructed-map" style={{marginBottom:'100px'}}></div>
+                        ))}
+                    </div>
+
                 </div>
             </div>
 
-
+            <div className="tool-ribbon">
+                <Link to="/">
+                    <Button icon="pi pi-arrow-left" aria-label="Back" raised />
+                </Link>
+            </div>
         </div>
     );
 };
