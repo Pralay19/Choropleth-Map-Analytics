@@ -6,7 +6,10 @@ import "./UsaChoroplethMaps.css"
 
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
-
+import { Ripple } from 'primereact/ripple';
+import { Dialog } from 'primereact/dialog';
+import PlotsFromData from "./PlotsFromData.jsx";
+import CombinedPlotsFromData from "./CombinedPlotsFromData.jsx";
 
 const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
     const [maps, setMaps] = useState([]);
@@ -14,8 +17,12 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
     const [mappedFiles, setMappedFiles] = useState({});
     const [mapColorScale, setMapColorScale] = useState('Blues');
 
-
     const [fileNamesInOrder, setFileNamesInOrder] = useState([])
+
+    const [morePlotsVisible, setMorePlotsVisible] = useState(false)
+    const [morePlotsForIndex, setMorePlotsForIndex] = useState(0)
+
+    const [combinedPlotsVisible, setCombinedPlotsVisible] = useState(false)
 
     const colorScaleOptionsList = [
         {label: "Reds", value: "Reds"},
@@ -49,6 +56,7 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
                 title: column,
                 data: {
                     locations: parsedData.map(row => getStateAbbreviation(row.State_Name || row.state_name || row.state)),
+                    locationsFull: parsedData.map(row => row.State_Name || row.state_name || row.state),
                     z: parsedData.map(row => row[column]),
                     text: parsedData.map(row => `${row.State_Name || row.state_name || row.state}: ${row[column]}`),
                 },
@@ -108,7 +116,8 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
 
             const config = {
                 responsive: true,
-                displayModeBar: true
+                displayModeBar: true,
+                // staticPlot: true,
             }
 
             Plotly.newPlot(map.id, plotData, layout, config);
@@ -137,15 +146,23 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
         return stateMap[stateName] || '';
     }
 
+    const handleVisualizeClick = () => {
+        window.scrollTo(0, 0); // Scroll to top-left
+    };
+
+    const BackButton = () => (
+        <div className="tool-ribbon">
+            <Link to="/">
+                <Button icon="pi pi-arrow-left" aria-label="Back" onClick={handleVisualizeClick} raised rounded/>
+            </Link>
+        </div>
+    )
+
     return (
         <div className="usa-choropleth-container">
-            <div className="tool-ribbon">
-                <Link to="/">
-                    <Button icon="pi pi-arrow-left" aria-label="Back" raised />
-                </Link>
-            </div>
-            <div>
-                <label htmlFor="colorScale">Select Color Scale: </label>
+            <BackButton />
+            <div style={{display: 'flex', justifyContent: 'end', alignItems: 'center', gap: '10px'}}>
+                <label htmlFor="colorScale">Color Scale: </label>
                 <Dropdown
                     id="colorScale"
                     value={mapColorScale}
@@ -155,36 +172,70 @@ const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
                 />
             </div>
 
-            <div style={{display: 'flex', direction: 'column',gap:'20px'}}>
-                <div style={{width: '50%'}}>
-                    <div><h2>ORIGINAL IMAGE</h2></div>
 
-                    <div>
-                        {Object.keys(mappedFiles).length >0 && fileNamesInOrder.map((fileName, i) => (
-                            <div key={i} style={{marginBottom:'55px'}} >
-                                <img src={URL.createObjectURL(mappedFiles[fileName])} alt={fileName} className="original-image" />
-                                <h3><u>{fileName}</u></h3>
+            <div style={{display: 'flex', flexWrap: 'wrap', marginTop: '50px'}}>
+                <div style={{ flex: '1 100%', fontSize: '1.2rem', fontWeight: '600', backgroundColor: "#dfdfdf", paddingBlock: '10px', color: "#000000", borderRadius: '10px', display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
+                    <div>Original Map</div>
+                    <div>Reconstructed Map</div>
+                </div>
+
+                {Object.keys(mappedFiles).length >0 && (() => {
+                    const elements = [];
+
+                    for(let i=0; i<maps.length; i++){
+                        elements.push(
+                            <div key={4*i} style={{ flex: '1 1 47%', marginRight: '1.5%', width: '47%', backgroundColor: "white", padding: '10px', borderTopLeftRadius: '10px', borderTopRightRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src={URL.createObjectURL(mappedFiles[fileNamesInOrder[i]])} alt={fileNamesInOrder[i]} className="original-image" />
                             </div>
-                        ))}
-                    </div>
-                </div>
-                <div style={{width: '50%'}}>
-                    <div><h2>RECONSTRUCTED CHOROPLETH</h2></div>
+                        );
 
-                    <div>
-                        {maps.map(map => (
-                            <div id={map.id} className="map-container mb-10 h-96 reconstructed-map" style={{marginBottom:'100px'}}></div>
-                        ))}
-                    </div>
+                        elements.push(
+                            <div key={4*i+1} style={{ flex: '1 1 47%', marginLeft: '1.5%', width: '47%', borderTopLeftRadius: '10px', borderTopRightRadius: '10px', overflow: 'hidden', padding: '10px', backgroundColor: "white", display: 'flex', alignItems: 'center', justifyContent: 'center'  }}
+                            >
+                                <div
+                                    id={maps[i].id} className="map-container mb-10 h-96"
+                                ></div>
+                            </div>
 
-                </div>
+                        )
+
+                        elements.push(
+                                <div key={4*i+2} style={{ flex: '1 1 47%', marginRight: '1.5%', width: '47%', marginBottom: "40px", backgroundColor: "#f59e0b", borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingBlock: '5px', color: "white"}}>{fileNamesInOrder[i]}</div>
+                        )
+
+                        elements.push(
+                            <div key={4*i+3} style={{ flex: '1 1 47%', marginLeft: '1.5%', width: '47%', marginBottom: "40px", backgroundColor: "#2e7dcc", borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingBlock: '5px', color: "white", cursor: 'pointer'}} className='p-ripple'
+                                 onClick={() => {setMorePlotsForIndex(i); setMorePlotsVisible(true)}}
+                            >
+                                <i className="pi pi-chart-scatter"></i> More Plots
+                                <Ripple
+                                    pt={{
+                                        root: { style: { background: 'rgba(46,125,204,0.49)'} }
+                                    }}
+                                />
+                            </div>
+                        )
+                    }
+
+                    return elements;
+                })()}
             </div>
 
-            <div className="tool-ribbon">
-                <Link to="/">
-                    <Button icon="pi pi-arrow-left" aria-label="Back" raised />
-                </Link>
+            <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+                <Button label='Combined Plots' icon="pi pi-wave-pulse" severity="info" rounded raised
+                    onClick={() => setCombinedPlotsVisible(true)}
+                />
             </div>
+
+            <BackButton />
+
+            <Dialog header="More Plots" visible={morePlotsVisible} style={{ width: '90vw' }} onHide={() => {if (!morePlotsVisible) return; setMorePlotsVisible(false); }}>
+                <PlotsFromData dataForPlots={maps[morePlotsForIndex]} />
+            </Dialog>
+
+            <Dialog header="Combined Plots" visible={combinedPlotsVisible} style={{ width: '90vw' }} onHide={() => {if (!combinedPlotsVisible) return; setCombinedPlotsVisible(false); }}>
+                <CombinedPlotsFromData dataForPlots={maps} />
+            </Dialog>
         </div>
     );
 };

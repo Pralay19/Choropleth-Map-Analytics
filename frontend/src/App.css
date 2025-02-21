@@ -5,7 +5,7 @@
 .app-container {
     min-height: 100vh;
     margin: 0;
-    padding: 30px;
+    padding: 50px;
     background: linear-gradient(135deg, #f0f2f4 0%, #c9d6ff 100%);
     font-family: "Poppins", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     text-align: center;
@@ -13,13 +13,14 @@
   
 
   .title {
-    margin-bottom: 20px;
+    font-size: 2rem;
+    margin-bottom: 5px;
     font-weight: 600;
     color: #333;
   }
   .subtitle {
     margin-top: 40px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     font-weight: 600;
     color: #333;
   }
@@ -115,8 +116,9 @@
   .stepper-line {
     position: absolute;
     top: 20px; 
-    left: 0;
-    width: 100%;
+    left: 50px;
+    /*width: 100%;*/
+    right: 50px;
     height: 3px;
     background-color: #ccc;
     z-index: 0; 

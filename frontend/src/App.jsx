@@ -15,6 +15,7 @@ import "primeicons/primeicons.css"
 
 import { PrimeReactProvider } from 'primereact/api';
 import { FileUpload } from 'primereact/fileupload';
+import { Button } from 'primereact/button';
 
 function App() {
   // confiuration for prime react
@@ -144,24 +145,27 @@ function App() {
     const headers = Object.keys(results[0]); 
 
     return (
-      <table className="results-table">
-        <thead>
-          <tr>
-            {headers.map((header, idx) => (
-              <th key={idx}>{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {results.map((row, rowIndex) => (
-            <tr key={rowIndex} className={rowIndex % 2 ? "row-odd" : "row-even"}>
-              {headers.map((header, cellIndex) => (
-                <td key={cellIndex}>{row[header]}</td>
+        <div style={{overflowY: 'auto'}}>
+          <table className="results-table">
+            <thead>
+            <tr>
+              {headers.map((header, idx) => (
+                  <th key={idx}>{header}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+            {results.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 ? "row-odd" : "row-even"}>
+                  {headers.map((header, cellIndex) => (
+                      <td key={cellIndex}>{row[header]}</td>
+                  ))}
+                </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>
+
     );
   };
 
@@ -177,8 +181,8 @@ function App() {
             path="/"
             element={
               <>
-                <h2 className="title">Choropleth Map Analytics</h2>
-                <p>Reverse Enginnering</p>
+                <div className="title">Choropleth Map Analytics</div>
+                <div style={{color: '#656565'}}>An End-to-End System for Reverse Engineering Choropleth Map Images</div>
 
                 {/* File Upload Form */}
                 {progress.length<=0 && (<div className="form-container">
@@ -204,13 +208,9 @@ function App() {
 
                     <div className="action-buttons">
                       <Link to="/visualize">
-                        <button className="gradient-button visualize-btn" onClick={handleVisualizeClick}>
-                          View Visualizations
-                        </button>
+                        <Button label="View Visualizations" onClick={handleVisualizeClick} icon="pi pi-chart-bar" severity="info" rounded raised/>
                       </Link>
-                      <button onClick={handleDownload} className="gradient-button download-btn">
-                        Download Results
-                      </button>
+                      <Button label="Download Results" onClick={handleDownload} icon="pi pi-download" severity='success' rounded raised/>
                     </div>
                   </div>
                 )}
