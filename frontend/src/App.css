@@ -2,13 +2,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@300;400;700&display=swap');
 
+
 .app-container {
     min-height: 100vh;
     margin: 0;
     padding: 50px;
-    background: linear-gradient(135deg, #f0f2f4 0%, #c9d6ff 100%);
+    /* background: radial-gradient(circle, #000000 0%, #0d0d0d 50%, #1a1a1a 100%); */
+    
+    background: black;
     font-family: "Poppins", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     text-align: center;
+    min-height: 100vh;
   }
   
 
@@ -19,10 +23,11 @@
     color: #333;
   }
   .subtitle {
+    font-size: 2rem;
     margin-top: 40px;
     margin-bottom: 10px;
     font-weight: 600;
-    color: #333;
+    color: #f2eeee;
   }
   
   
@@ -135,8 +140,8 @@
   
   
   .step-circle {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     background-color: #cccccc;
     display: flex;
@@ -151,7 +156,7 @@
   .step-label {
     margin-top: 8px;
     font-size: 14px;
-    color: #333;
+    color: #f7eeee;
     text-align: center;
     width: 100%;
     line-height: 1.2;
@@ -240,9 +245,9 @@
   
   
   .row-even {
-    background: #f3f3f3;
+    background: #0b0b0b;
   }
   .row-odd {
-    background: #ffffff;
+    background: #1a1919;
   }
   
