@@ -1,19 +1,38 @@
 import React, { useState } from "react";
+import { 
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link
+} from 'react-router-dom';
 import axios from "axios";
 import "./App.css"; 
 import UsaChoroplethMaps from "./UsaChoroplethMaps.jsx";
 
+import "primereact/resources/themes/lara-dark-teal/theme.css";
+// import "primereact/resources/themes/lara-light-teal/fonts/InterVariable.woff2"
+import "primeicons/primeicons.css"
+
+import { PrimeReactProvider } from 'primereact/api';
+import { FileUpload } from 'primereact/fileupload';
+import { Button } from 'primereact/button';
+
 function App() {
+  // confiuration for prime react
+  const primeReactConfig = {
+    ripple: true,
+    CSSTransition: true,
+  }
+
   const [files, setFiles] = useState([]);
   const [progress, setProgress] = useState([]);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
 
-  const [mapColorScale, setMapColorScale] = useState('Reds');
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
-    setFiles(Array.from(e.target.files));
+    setFiles(Array.from(e.files));
   };
 
   
@@ -126,81 +145,115 @@ function App() {
     const headers = Object.keys(results[0]); 
 
     return (
-      <table className="results-table">
-        <thead>
-          <tr>
-            {headers.map((header, idx) => (
-              <th key={idx}>{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {results.map((row, rowIndex) => (
-            <tr key={rowIndex} className={rowIndex % 2 ? "row-odd" : "row-even"}>
-              {headers.map((header, cellIndex) => (
-                <td key={cellIndex}>{row[header]}</td>
+        <div style={{overflowY: 'auto'}}>
+          <table className="results-table">
+            <thead>
+            <tr>
+              {headers.map((header, idx) => (
+                  <th key={idx}>{header}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+            {results.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 ? "row-odd" : "row-even"}>
+                  {headers.map((header, cellIndex) => (
+                      <td key={cellIndex}>{row[header]}</td>
+                  ))}
+                </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>
+
     );
   };
 
+  const handleVisualizeClick = () => {
+    window.scrollTo(0, 0); // Scroll to top-left
+  };
   return (
-    <div className="app-container">
-      <h2 className="title">Choropleth Map Analytics</h2>
+      <PrimeReactProvider value={primeReactConfig}>
+    <Router>
+      <div className="app-container">
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
+                <div style={{ 
+    textAlign: 'center', 
+    fontFamily: "'Poppins', sans-serif", 
+    padding: '30px',
+    background: 'url("src/wall7.png") center/cover no-repeat, #1a1a1a',
+    backdropFilter:'20px',
+    color: 'white',
+    borderRadius:'35px'
+}}>
 
-      {/* File Upload Form */}
-      {progress.length<=0 && (<div className="form-container">
-        <input type="file" multiple onChange={handleFileChange} />
-        <button onClick={handleUpload} className="gradient-button upload-btn">
-          Upload
-        </button>
-      </div>)}
-
-      
-      {error && <p className="error-message">{error}</p>}
-
-      {progress && progress.length > 0 && renderStepper()}
-
-      {results && (
-          <>
-            <div className="results-section">
-              <h3 className="subtitle">Results</h3>
-              {renderTable()}
-              <button onClick={handleDownload} className="gradient-button download-btn">
-                Download Results
-              </button>
-            </div>
-
-            <div>
-              <label htmlFor="colorScale">Select Color Scale: </label>
-              <select
-                  id="colorScale"
-                  value={mapColorScale}
-                  onChange={(e) => setMapColorScale(e.target.value)}
-              >
-                <option value="Reds">Reds</option>
-                <option value="Viridis">Viridis</option>
-                <option value="YlGnBu">YlGnBu</option>
-                <option value="Hot">Hot</option>
-                <option value="RdBu">RdBu</option>
-                <option value="Portland">Portland</option>
-                <option value="Picnic">Picnic</option>
-                <option value="Jet">Jet</option>
-                <option value="Bluered">Bluered</option>
-              </select>
-            </div>
-
-            <UsaChoroplethMaps
-                parsedData={JSON.parse(JSON.stringify(results))}
-                colorscale={mapColorScale}
-                files={files}
-            />
-          </>
-      )}
+    <div style={{ 
+        fontSize: '36px', 
+        fontWeight: 'bold', 
+        color: '#fff', 
+        textShadow: '0px 0px 10px rgba(0, 255, 255, 0.8), 0px 0px 20px rgba(0, 255, 255, 0.5)',
+        paddingBottom: '10px'
+    }}>
+        <h2>Choropleth Map Analytics</h2>
     </div>
+    <div style={{ 
+        fontSize: '18px', 
+        marginTop: '10px', 
+        maxWidth: '600px', 
+        marginLeft: 'auto', 
+        marginRight: 'auto', 
+        lineHeight: '1.5',
+        padding: '15px',
+        background: 'rgba(255, 255, 255, 0.1)', 
+        boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(5px)',
+        borderRadius: '10px',
+    }}>
+        An End-to-End System for Reverse Engineering Choropleth Map Images
+    </div>
+</div>
+                {/* File Upload Form */}
+                {progress.length<=0 && (<div className="form-container">
+                  <FileUpload
+                      multiple
+                      accept="image/*"
+                      onSelect={handleFileChange}
+                      onClear={() => setFiles([])}
+                      onRemove={(e) => setFiles(files.filter((f) => f !== e.file))}
+                      customUpload={true}
+                      uploadHandler={handleUpload}
+                  />
+                </div>)}
+
+                {error && <p className="error-message">{error}</p>}
+
+                {progress && progress.length > 0 && renderStepper()}
+
+                {results && (
+                  <div className="results-section">
+                    <h3 className="subtitle">Results</h3>
+                    {renderTable()}
+
+                    <div className="action-buttons">
+                      <Link to="/visualize">
+                        <Button label="View Visualizations" onClick={handleVisualizeClick} icon="pi pi-chart-bar" severity="info" rounded raised/>
+                      </Link>
+                      <Button label="Download Results" onClick={handleDownload} icon="pi pi-download" severity='success' rounded raised/>
+                    </div>
+                  </div>
+                )}
+              </>
+            }
+          />
+          <Route path="/visualize" element={<UsaChoroplethMaps parsedData={JSON.parse(JSON.stringify(results))} files={files} />} />
+        </Routes>
+      </div>
+    </Router>
+      </PrimeReactProvider>
   );
 }
 

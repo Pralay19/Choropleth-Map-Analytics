@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flask Backend SSE Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    #updates div { padding: 5px; border-bottom: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h1>Test File Upload and SSE Updates</h1>
+  <input type="file" id="fileInput" multiple>
+  <button id="uploadButton">Upload Files</button>
+  <p id="status"></p>
+  <h3>Updates:</h3>
+  <div id="updates"></div>
+  
+  <script>
+    document.getElementById("uploadButton").addEventListener("click", function() {
+      const files = document.getElementById("fileInput").files;
+      if (files.length === 0) {
+        alert("Please select at least one file.");
+        return;
+      }
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+      fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("status").innerText = data.message;
+        console.log("Job ID:", data.job_id);
+        // Open an SSE connection using the job_id returned from the upload endpoint
+        const eventSource = new EventSource("http://127.0.0.1:5000/predict-stream?job_id=" + data.job_id);
+        eventSource.onmessage = function(event) {
+          const updateData = JSON.parse(event.data);
+          const updatesDiv = document.getElementById("updates");
+          const newDiv = document.createElement("div");
+          newDiv.innerText = JSON.stringify(updateData);
+          updatesDiv.appendChild(newDiv);
+        };
+        eventSource.onerror = function(error) {
+          console.error("SSE error:", error);
+        };
+      })
+      .catch(error => {
+        console.error("Upload error:", error);
+      });
+    });
+  </script>
+</body>
+</html>

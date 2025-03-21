@@ -1,5 +1,5 @@
-#------------------------------------------------------------------------------------------
-from flask import Flask, request, jsonify, Response, stream_with_context
+# ------------------------------------------------------------------------------------------
+from flask import Flask, request, jsonify, Response, stream_with_context, send_from_directory
 from flask import send_file, abort
 from flask_cors import CORS
 import tensorflow as tf
@@ -16,6 +16,9 @@ import cv2
 import csv
 from werkzeug.utils import secure_filename
 from tensorflow.keras.preprocessing.image import load_img
+
+#-------importing functions file for various functions
+from functions import *
 
 # Detectron2
 import torch, detectron2
@@ -48,9 +51,7 @@ cfg1.DATASETS.TRAIN = (annotation_dataset_name,)
 MetadataCatalog.get(annotation_dataset_name).thing_classes = ["title", "legend"]
 train_metadata_annotation = MetadataCatalog.get(annotation_dataset_name)
 
-model_annotation = DefaultPredictor(cfg1) #Detectron2 model for the segmentation of the components
-
-
+model_annotation = DefaultPredictor(cfg1)  # Detectron2 model for the segmentation of the components
 
 # State Segmentation detectron2 model
 MODEL_PATH_STATES = "model/Trained_Models/Colab/detectron2.pth"
@@ -63,17 +64,21 @@ cfg2.MODEL.DEVICE = "cpu"
 states_dataset_name = "states_dataset_train"
 cfg2.DATASETS.TRAIN = (states_dataset_name,)
 
-class_names = ["Washington", "Idaho", "Montana", "North Dakota", "South Dakota", "Minnesota", "Iowa", "Wisconsin", "Illinois", "Indiana", "Michigan", "Ohio", "Pennsylvania", "New York", "Vermont", "New Hampshire", "Maine", "Massachusetts", "Rhode Island", "Connecticut", "New Jersey", "Delaware", "Maryland", "West Virginia", "Virginia", "Kentucky", "Tennessee", "North Carolina", "South Carolina", "Georgia", "Alabama", "Mississippi", "Florida", "Louisiana", "Arkansas", "Oklahoma", "Texas", "New Mexico", "Colorado", "Wyoming", "Nebraska", "Utah", "Arizona", "Nevada", "California", "Oregon", "Alaska", "Hawaii", "Kansas", "Missouri"]
+class_names = ["Washington", "Idaho", "Montana", "North Dakota", "South Dakota", "Minnesota", "Iowa", "Wisconsin",
+               "Illinois", "Indiana", "Michigan", "Ohio", "Pennsylvania", "New York", "Vermont", "New Hampshire",
+               "Maine", "Massachusetts", "Rhode Island", "Connecticut", "New Jersey", "Delaware", "Maryland",
+               "West Virginia", "Virginia", "Kentucky", "Tennessee", "North Carolina", "South Carolina", "Georgia",
+               "Alabama", "Mississippi", "Florida", "Louisiana", "Arkansas", "Oklahoma", "Texas", "New Mexico",
+               "Colorado", "Wyoming", "Nebraska", "Utah", "Arizona", "Nevada", "California", "Oregon", "Alaska",
+               "Hawaii", "Kansas", "Missouri"]
 
 MetadataCatalog.get(states_dataset_name).thing_classes = class_names
 train_metadata_states = MetadataCatalog.get(states_dataset_name)
 
-model_states = DefaultPredictor(cfg2) #Detectron2 model for segmentation of states
-
+model_states = DefaultPredictor(cfg2)  # Detectron2 model for segmentation of states
 
 # # OCR model
 # ocr_model = PaddleOCR(lang='en')
-
 
 
 # Folders:
@@ -85,8 +90,9 @@ OUTPUT_FOLDER = "outputs"
 app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+
 # Clear the Folders
-def clear_folder_contents(folder_path):   
+def clear_folder_contents(folder_path):
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
         try:
@@ -99,19 +105,12 @@ def clear_folder_contents(folder_path):
             print(f"Error clearing {file_path}: {e}")
 
 
-
-# @app.route("/", methods=["GET"])
-# def home():
-#     return jsonify({"message": "System is Online", "status": "Success"})
-
 # For RESNET:
 def preprocess_image(filepath):
     img = load_img(filepath, target_size=(224, 224))
-    img = np.asarray(img)/255
+    img = np.asarray(img) / 255
     img_array = np.expand_dims(img, axis=0)
     return img_array
-
-
 
 
 # For ANNOTATION model->batch processing of the images
@@ -130,12 +129,15 @@ def process_images(input_dir):
 
         for i, prop in enumerate(props):
             bounding_box = tuple(prop.bbox)
-            class_name = train_metadata_annotation.thing_classes[class_labels[i]] if i < len(class_labels) else 'Unknown'
+            class_name = train_metadata_annotation.thing_classes[class_labels[i]] if i < len(
+                class_labels) else 'Unknown'
             data.append((image_filename, class_name, bounding_box))
     return data
 
+
 def format_bounding_box(bbox):
     return '' if not bbox else f'({bbox[1]},{bbox[2]},{bbox[4]},{bbox[5]})'
+
 
 def generate_csv(data, output_path):
     coordinates_dict = {}
@@ -153,10 +155,8 @@ def generate_csv(data, output_path):
     df.to_csv(output_path, index=False)
 
 
-
-
-
 uploaded_files = []
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -182,6 +182,7 @@ def predict():
     print("Files uploaded successfully:", uploaded_files)  # Debugging
     return jsonify({"message": "Files uploaded successfully", "status": "success"}), 200
 
+
 @app.route("/predict-stream", methods=["GET"])
 def predict_stream():
     def generate_progress():
@@ -204,7 +205,7 @@ def predict_stream():
         yield ""
 
         results = []
-        
+        global final_results_ready
         # RESNET MODEL BATCH PROCESSING
         csv_file = os.path.join(OUTPUT_FOLDER, "classification.csv")
         with open(csv_file, mode='w', newline='') as file:
@@ -218,12 +219,12 @@ def predict_stream():
                     prediction_resnet = model_resnet.predict(img)
                     img_type = "continuous" if prediction_resnet[0][0] > 0.5 else "discrete"
                     writer.writerow([filename, img_type])
-        
+
         progress_updates[1]["status"] = "completed"
         progress_updates[2]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print(f"\nPredictions saved to {csv_file}")
-#-----------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------------
 
         # ANNOTATION DETECTRON2 MODEL BATCH PROCESSING
         output_csv_path = os.path.join(OUTPUT_FOLDER, "output_objects.csv")
@@ -233,7 +234,7 @@ def predict_stream():
         progress_updates[3]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("Processed output saved to CSV.")
-#-----------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------------
         # DETECTRON2 FOR SEGMENTATION OF STATES
         output_csv_path = os.path.join(OUTPUT_FOLDER, "output_objects_state_segmentation.csv")
 
@@ -276,7 +277,7 @@ def predict_stream():
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("\nObject-level information saved to CSV file.")
         print("\nSegmentation of all images completed.")
-#-----------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------------
         # OCR MODEL FOR TEXT EXTRACTION
         # OCR model
         ocr_model = PaddleOCR(lang='en')
@@ -285,17 +286,17 @@ def predict_stream():
         df2 = pd.read_csv("outputs/output_objects.csv")
         annotations_df = pd.merge(df2, df1, on="file name")
         img_path = "uploads"
-        data=[]
+        data = []
         for row in annotations_df.itertuples():
             file_name = row[1]
             map_type = row[4]
             title_bounding_box = row[3]
             legend_bounding_box = row[2]
             data.append((file_name, map_type, title_bounding_box, legend_bounding_box))
-        
+
         def convert_to_doubles(low, upper_bound):
-            low=lower_bound.replace(",", "")
-            up=upper_bound.replace(",", "")
+            low = lower_bound.replace(",", "")
+            up = upper_bound.replace(",", "")
 
             if low and not low[-1].isdigit():
                 units = low[-1]
@@ -328,7 +329,6 @@ def predict_stream():
             numbers = [int(i) for i in words]
             return numbers
 
-        
         complete_data = []
 
         for ele in data:
@@ -345,18 +345,17 @@ def predict_stream():
 
             y, x, h, w = values
 
-            cropped_img = image[y:y+h, x:x+w]
+            cropped_img = image[y:y + h, x:x + w]
             numpydata = asarray(cropped_img)
 
             result = ocr_model.ocr(numpydata, cls=False)
             map_title = result[0][0][1][0]
 
-
             numerical_info = []
             values = extract_numbers(legend_bounding_box)
             y, x, h, w = values
 
-            cropped_img = image[y:y+h, x:x+w]
+            cropped_img = image[y:y + h, x:x + w]
             numpydata = asarray(cropped_img)
             image = cropped_img
 
@@ -366,84 +365,87 @@ def predict_stream():
                 for word in line:
                     text = word[1][0]
 
-                    x, y, w, h = word[0][0][0], word[0][0][1], abs(word[0][0][0]-word[0][1][0]), abs(word[0][1][1]-word[0][2][1])
+                    x, y, w, h = word[0][0][0], word[0][0][1], abs(word[0][0][0] - word[0][1][0]), abs(
+                        word[0][1][1] - word[0][2][1])
 
                     x1 = int(x)
-                    y1 = int(y+h//2)
+                    y1 = int(y + h // 2)
                     x2 = int(x)
-                    y2 = int(y+h//2-1)
+                    y2 = int(y + h // 2 - 1)
 
-                    while all(image[y1, x1]==image[y2, x2]):
-                        x2-=1
+                    while all(image[y1, x1] == image[y2, x2]):
+                        x2 -= 1
                     x3 = x2
-                    while all(image[y1, x1]==image[y2, x3]):
-                        x3-=1
+                    while all(image[y1, x1] == image[y2, x3]):
+                        x3 -= 1
 
-                    x2 = (x2+x3)//2
-                    color = image[y2,x2]
+                    x2 = (x2 + x3) // 2
+                    color = image[y2, x2]
 
                     blue, green, red = color
                     numerical_info += [text] + [red, green, blue]
 
-            i=0
+            i = 0
             value_id = 0
-            while i<len(numerical_info):
+            while i < len(numerical_info):
                 value_id += 1
 
-                if numerical_info[i]!="N/A" and numerical_info[i]!="-" and any(char.isdigit() for char in numerical_info[i]):     # modified code from original
+                if numerical_info[i] != "N/A" and numerical_info[i] != "-" and any(
+                        char.isdigit() for char in numerical_info[i]):  # modified code from original
                     values = numerical_info[i].split("-")
 
-                    if len(values)>1:
+                    if len(values) > 1:
                         lower_bound = values[0]
                         upper_bound = values[1]
                     else:
                         lower_bound = values[0]
                         upper_bound = values[0]
                     converted_lower_bound, converted_upper_bound, units = convert_to_doubles(lower_bound, upper_bound)
-                    info = [file_name, map_type, map_title, numerical_info[i+1], numerical_info[i+2], numerical_info[i+3], (converted_lower_bound+converted_upper_bound)/2, units]
+                    info = [file_name, map_type, map_title, numerical_info[i + 1], numerical_info[i + 2],
+                            numerical_info[i + 3], (converted_lower_bound + converted_upper_bound) / 2, units]
 
                 else:
                     values = "N/A"
-                    info = [file_name, map_type, map_title, numerical_info[i+1], numerical_info[i+2], numerical_info[i+3], values, ""]
+                    info = [file_name, map_type, map_title, numerical_info[i + 1], numerical_info[i + 2],
+                            numerical_info[i + 3], values, ""]
 
                 map_name = img_path.split("/")[-1].split(".")[0]
                 info = [map_name] + info
                 complete_data += [info]
-                i+=4
-        
-        
+                i += 4
+
         output_df = pd.DataFrame(complete_data)
         df = output_df[output_df[7] != 'N/A']
-        
+
         combined_column = df.apply(lambda row: f"({row[4]}, {row[5]}, {row[6]})", axis=1)
         df['RGB color'] = combined_column
         df.drop([4, 5, 6], axis=1, inplace=True)
         df.drop([0], axis=1, inplace=True)
         new_column_names = {
-        1: 'file_name',
-        2: 'map_type',
-        3: 'map_title',
-        7: 'value',
-        8: 'unit'
+            1: 'file_name',
+            2: 'map_type',
+            3: 'map_title',
+            7: 'value',
+            8: 'unit'
         }
         df = df.rename(columns=new_column_names)
-        df.to_csv("outputs/OCR_output.csv", index = False)
+        df.to_csv("outputs/OCR_output.csv", index=False)
 
         progress_updates[4]["status"] = "completed"
         progress_updates[5]["status"] = "processing"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("OCR output is saved.")
-#------------------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------------------
         # Color-to-Data Mapping
         ocr_df = pd.read_csv("outputs/OCR_output.csv")
-        seg_df = pd.read_csv("outputs/output_objects_state_segmentation.csv")  
-        output_file_path = "outputs/Color_To_Data_Mapping.csv"  
+        seg_df = pd.read_csv("outputs/output_objects_state_segmentation.csv")
+        output_file_path = "outputs/Color_To_Data_Mapping.csv"
 
         def getDataForFilename(output_data, filename):
             return [tuple for tuple in output_data if tuple[0] == filename]
 
         def getUniqueFilenames(ocr_df):
-            return ocr_df['file_name'].unique().tolist() 
+            return ocr_df['file_name'].unique().tolist()
 
         def getMapTitleDictionary(ocr_df, filenames_list):
             map_dict = {}
@@ -452,7 +454,7 @@ def predict_stream():
                 row = filtered_rows.iloc[0]
                 map_dict[filename] = row['map_title']
 
-            return map_dict   
+            return map_dict
 
         data_a = []
         data_b = []
@@ -463,7 +465,7 @@ def predict_stream():
             color_str = row[6]
             color = tuple(int(x) for x in color_str.strip('()').split(', '))
             data_a.append((file_name, state, color))
-        
+
         for row in ocr_df.itertuples():
             file_name = row[1]
             map_type = row[2]
@@ -477,7 +479,7 @@ def predict_stream():
                 average_value = 0
             unit = row[5]
             data_b.append((file_name, map_type, map_title, average_value, unit, color))
-    
+
         output_data = []
         for file_name, state, state_color in data_a:
             numerical_data = []
@@ -527,7 +529,7 @@ def predict_stream():
                         if (0 + delta) <= A and A <= (1 + delta):
                             assigned_value = A * (value_1 - value_2) + value_2
                     output_data.append((file_name, state, assigned_value, assigned_unit))
-        
+
         file_list = getUniqueFilenames(ocr_df)
         map_titles = getMapTitleDictionary(ocr_df, file_list)
 
@@ -545,36 +547,33 @@ def predict_stream():
             for filename, state, assigned_value, assigned_unit in dataReqd:
                 df.loc[df['State_Name'] == state, map_title] = assigned_value
                 title_to_filename_mapping[map_title] = filename
-        
-        
+
         df = df.drop_duplicates()
         for col in df.columns[1:]:
             median_val = df[col].replace(0, pd.NA).median()
             df[col] = df[col].replace(0, median_val)
 
-        
         df = df._append(title_to_filename_mapping, ignore_index=True)
         df.to_csv(output_file_path, index=False)
 
         progress_updates[5]["status"] = "completed"
         yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
         print("\nColor-to-data mapping completed")
-#------------------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------------------
         # Sending results to the frontend
         results = df.to_dict(orient='records')
-
+        # print(results)
         final_data = json.dumps({
             "Results": results,
             "progress": progress_updates,
             "status": "success",
         })
 
-
-        
         yield f"data: {final_data}\n\n"
         sys.stdout.flush()
 
     return Response(stream_with_context(generate_progress()), mimetype="text/event-stream")
+
 
 @app.route('/download', methods=['GET'])
 def download_results():
@@ -591,7 +590,8 @@ def download_results():
     else:
         abort(404, description="File not found")
 
+
 if __name__ == "__main__":
-    app.run(debug=False,use_reloader=False)
+    app.run(debug=False, use_reloader=False)
 
 
