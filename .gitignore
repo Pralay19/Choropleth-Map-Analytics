@@ -3,3 +3,6 @@ model
 uploads
 outputs
 .idea
+.env
+sendgrid.env
+emails

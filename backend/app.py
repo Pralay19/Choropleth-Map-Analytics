@@ -17,7 +17,19 @@ import csv
 from werkzeug.utils import secure_filename
 from tensorflow.keras.preprocessing.image import load_img
 
+# ------------For Mailing Service
+# from flask_mail import Mail, Message
+# from typing import Optional
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
+#-----------For enviroment variables
+from dotenv import load_dotenv
+load_dotenv()
+# from Mail import MailService
+
+
+#----------For locking and creating Session_ID
 import threading
 import uuid
 
@@ -32,6 +44,7 @@ from skimage.measure import label, regionprops
 from paddleocr import PaddleOCR
 
 app = Flask(__name__)
+# mail_service = MailService(app)
 CORS(app)
 
 # RESNET Model
@@ -91,6 +104,9 @@ OUTPUT_FOLDER = "outputs"
 app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+EMAIL_FOLDER = "emails"
+app.config["EMAIL_FOLDER"] = EMAIL_FOLDER
+os.makedirs(EMAIL_FOLDER, exist_ok=True)
 
 # Clear the Folders
 def clear_folder_contents(folder_path):
@@ -189,17 +205,31 @@ def predict():
     files = request.files.getlist("files")
     if not files or all(file.filename == "" for file in files):
         return jsonify({"error": "No files selected"}), 400
+    
+   
 
     # Generate session ID and directories
     session_id = str(uuid.uuid4())
     upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id)
+    email_dir = os.path.join(app.config["EMAIL_FOLDER"], session_id)
     os.makedirs(upload_dir, exist_ok=True)
-
+    os.makedirs(email_dir, exist_ok=True)
+    print(email_dir)   # Debugging
+    
     # Save files to session directory
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(upload_dir, filename)
         file.save(filepath)
+
+    # Get email from frontend request
+    # user_email = request.form.get('email')
+    user_email="rajankhade31@gmail.com"
+    if user_email:
+            email_path = os.path.join(email_dir, "user_email.txt")
+            with open(email_path, "w") as f:
+                f.write(user_email)
+            print(f"User email saved to {email_path}")
 
     print("Files uploaded successfully:", uploaded_files)  # Debugging
     return jsonify({"message": "Files uploaded successfully", "status": "success", "session_id": session_id}), 200
@@ -217,6 +247,7 @@ def predict_stream():
         # Clean session ID to prevent path traversal
         session_id = secure_filename(session_id)
         upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id)
+        email_dir = os.path.join(app.config["EMAIL_FOLDER"], session_id)
         
         if not os.path.exists(upload_dir):
             return jsonify({"error": "Invalid session ID"}), 404
@@ -604,7 +635,44 @@ def predict_stream():
                 "progress": progress_updates,
                 "status": "success",
             })
-            delete_path(upload_dir)
+            view_link = f"{os.getenv('APP_URL')}/predict-stream?session_id={session_id}"
+            if final_data:
+                # Get user email from session data
+                email_path = os.path.join(email_dir, "user_email.txt")
+                if os.path.exists(email_path):
+                    with open(email_path, "r") as f:
+                        user_email = f.read().strip()
+                    
+                    if user_email:
+                        message = Mail(
+                                    from_email=os.getenv('MAIL_DEFAULT_SENDER'),
+                                    to_emails=user_email,
+                                    subject='Choropleth Analysis Complete',
+                                    html_content=f"""
+                                    <h1>Analysis Complete</h1>
+                                    <p>Your choropleth map analysis is ready:</p>
+                                    <a href="{view_link}" style="
+                                        background: #00c3ff;
+                                        color: white;
+                                        padding: 10px 20px;
+                                        text-decoration: none;
+                                        border-radius: 5px;
+                                        display: inline-block;
+                                        margin-top: 15px;
+                                    ">View Results</a>
+                                    """)
+                        
+                        try:
+                            sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+                            response = sg.send(message)
+                            print(response.status_code)
+                            print(response.body)
+                            print(response.headers)
+                        except Exception as e:
+                            print(e.message)
+            
+
+            # delete_path(upload_dir)
             yield f"data: {final_data}\n\n"
             sys.stdout.flush()
 
@@ -628,6 +696,6 @@ def predict_stream():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",debug=False, use_reloader=False)
+    app.run(host="0.0.0.0",debug=True, use_reloader=False)
 
 
