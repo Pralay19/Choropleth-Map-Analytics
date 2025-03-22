@@ -1,0 +1,27 @@
+.glow-button {
+    
+    position: relative;
+    z-index: 1;
+  }
+  
+  .stars {
+    position: fixed !important; 
+    pointer-events: none;
+    z-index: 9999;
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    opacity: 1;
+  }
+  
+  .stars::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    animation: twinkle 1s infinite;
+  }
+  
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }

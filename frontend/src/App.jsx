@@ -8,7 +8,7 @@ import {
 import axios from "axios";
 import "./App.css"; 
 import UsaChoroplethMaps from "./UsaChoroplethMaps.jsx";
-
+import GlowingButton from './GlowingButton';
 import "primereact/resources/themes/lara-dark-teal/theme.css";
 // import "primereact/resources/themes/lara-light-teal/fonts/InterVariable.woff2"
 import "primeicons/primeicons.css"
@@ -28,6 +28,7 @@ function App() {
   const [progress, setProgress] = useState([]);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [sessionID, setSessionID] = useState(null);
 
 
   // Handle file selection (allow multiple files)
@@ -51,14 +52,16 @@ function App() {
       setError(null);
       setProgress([]);
       setResults(null);
-
+      setSessionID(null);
       
-      await axios.post("http://127.0.0.1:5000/predict", formData, {
+     const uploadResponse = await axios.post("http://127.0.0.1:5000/predict", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      
-      const source = new EventSource("http://127.0.0.1:5000/predict-stream");
+      const newSessionId = uploadResponse.data.session_id; // Unique session ID
+      console.log("Session ID:", newSessionId," type:",typeof(newSessionId));
+      setSessionID(newSessionId);
+      const source = new EventSource(`http://127.0.0.1:5000/predict-stream?session_id=${newSessionId}`);
 
       source.onmessage = (event) => {
         try {
@@ -85,6 +88,15 @@ function App() {
       console.error(err);
       setError("Error uploading file(s)");
     }
+    const progress_updates = [
+      {"step": 1, "label": "Uploading Images to Server", "status": "completed"},
+      {"step": 2, "label": "Classification of Map Legend Type", "status": "processing"},
+      {"step": 3, "label": "Segmentation of Map Components", "status": "processing"},
+      {"step": 4, "label": "Segmentation of State Boundaries", "status": "processing"},
+      {"step": 5, "label": "Text Data Extraction using OCR", "status": "processing"},
+      {"step": 6, "label": "State Color to Legend Data Mapping", "status": "processing"}
+    ];
+    setProgress(progress_updates);
   };
 
   
@@ -242,7 +254,9 @@ function App() {
                       <Link to="/visualize">
                         <Button label="View Visualizations" onClick={handleVisualizeClick} icon="pi pi-chart-bar" severity="info" rounded raised/>
                       </Link>
-                      <Button label="Download Results" onClick={handleDownload} icon="pi pi-download" severity='success' rounded raised/>
+
+                        <Button label="Download Results" onClick={handleDownload} icon="pi pi-download" severity='success' rounded raised/>
+                        <GlowingButton label="AI" onClick={() => {/*  */}} />
                     </div>
                   </div>
                 )}
