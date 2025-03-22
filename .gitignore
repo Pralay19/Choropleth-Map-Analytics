@@ -3,3 +3,4 @@ model
 uploads
 outputs
 .idea
+.env

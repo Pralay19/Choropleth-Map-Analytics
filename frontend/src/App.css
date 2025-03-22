@@ -6,7 +6,8 @@
 .app-container {
     min-height: 100vh;
     margin: 0;
-    padding: 50px;
+    padding-inline: 50px;
+    padding-block: 20px;
     /* background: radial-gradient(circle, #000000 0%, #0d0d0d 50%, #1a1a1a 100%); */
     
     background: black;
