@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {useState, useEffect, useRef} from "react";
 import { 
   BrowserRouter as Router,
   Routes,
@@ -16,6 +16,8 @@ import "primeicons/primeicons.css"
 import { PrimeReactProvider } from 'primereact/api';
 import { FileUpload } from 'primereact/fileupload';
 import { Button } from 'primereact/button';
+import {Avatar} from "primereact/avatar";
+import {Menu} from "primereact/menu";
 
 function App() {
   // confiuration for prime react
@@ -54,14 +56,15 @@ function App() {
       setResults(null);
       setSessionID(null);
       
-     const uploadResponse = await axios.post("http://127.0.0.1:5000/predict", formData, {
+     const uploadResponse = await axios.post("http://localhost:5000/predict", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+         withCredentials: true,
       });
 
       const newSessionId = uploadResponse.data.session_id; // Unique session ID
       console.log("Session ID:", newSessionId," type:",typeof(newSessionId));
       setSessionID(newSessionId);
-      const source = new EventSource(`http://127.0.0.1:5000/predict-stream?session_id=${newSessionId}`);
+      const source = new EventSource(`http://localhost:5000/predict-stream?session_id=${newSessionId}`);
 
       source.onmessage = (event) => {
         try {
@@ -102,8 +105,9 @@ function App() {
   
   const handleDownload = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:5000/download", {
+      const response = await axios.get("http://localhost:5000/download", {
         responseType: "blob", // Important for handling binary data
+          withCredentials: true,
       });
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -184,10 +188,65 @@ function App() {
   const handleVisualizeClick = () => {
     window.scrollTo(0, 0); // Scroll to top-left
   };
+
+  // ============================================
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const response = await axios.get("http://localhost:5000/auth/status", {withCredentials: true});
+                setUser(response.data.user);
+            } catch (error) {
+                setUser(null);
+                console.log(error)
+            }
+        };
+        fetchUser();
+    }, []);
+
+    const handleLogin = () => {
+        window.location.href = "http://localhost:5000/login";
+    };
+
+    const handleLogout = async () => {
+        setUser(null)
+        try {
+            await axios.get("http://localhost:5000/logout", {withCredentials: true});
+        } catch (error) {
+            console.log(error)
+        }
+    }
+  // ============================================
+
+    const dropDownRef = useRef(null)
+
   return (
       <PrimeReactProvider value={primeReactConfig}>
     <Router>
       <div className="app-container">
+          <div style={{marginBottom: 10, display: "flex", justifyContent: "end", alignItems: "center", gap: 10}}>
+              {user ? (<>
+                  <div><span style={{color: "var(--primary-color)"}}>Hello</span>, <span style={{fontSize: "2rem"}}>{user.name}</span></div>
+                  <div style={{flexGrow: 1}}></div>
+                <Avatar image={user.picture} size="xlarge" shape="circle"
+                        imageFallback="http://localhost:5000/static/images/fallback_profile_image.png"
+                />
+
+                  <Menu popup ref={dropDownRef} style={{marginTop: "10px"}}
+                    model={[{
+                        label: "Logout",
+                        icon: "pi pi-sign-out",
+                        command: () => {handleLogout()},
+                    }]}
+                  />
+                  <Button icon="pi pi-angle-down" text
+                    onClick={(event) => dropDownRef.current.toggle(event)}
+                  />
+              </>): (
+                  <></>
+              )}
+          </div>
         <Routes>
           <Route
             path="/"
@@ -228,6 +287,7 @@ function App() {
         An End-to-End System for Reverse Engineering Choropleth Map Images
     </div>
 </div>
+              {user ? (<>
                 {/* File Upload Form */}
                 {progress.length<=0 && (<div className="form-container">
                   <FileUpload
@@ -259,6 +319,11 @@ function App() {
                         <GlowingButton label="AI" onClick={() => {/*  */}} />
                     </div>
                   </div>
+                )}
+              </>) : (
+                    <div style={{marginBlock: "20px"}}>
+                        <Button label="Sign in with Google" icon="pi pi-google" onClick={handleLogin}></Button>
+                    </div>
                 )}
               </>
             }

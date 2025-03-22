@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------------------
-from flask import Flask, request, jsonify, Response, stream_with_context, send_from_directory
+from flask import Flask, request, jsonify, Response, stream_with_context, send_from_directory, session, redirect, url_for
 from flask import send_file, abort
 from flask_cors import CORS
 import tensorflow as tf
@@ -9,8 +9,8 @@ import pandas as pd
 import os
 import sys
 import shutil
-import distutils.core
-import time
+import requests
+from functools import wraps
 import json
 import cv2
 import csv
@@ -43,9 +43,33 @@ from skimage.measure import label, regionprops
 # OCR
 from paddleocr import PaddleOCR
 
+load_dotenv()
 app = Flask(__name__)
-# mail_service = MailService(app)
-CORS(app)
+app.secret_key = os.urandom(24)     # session secret
+
+CORS(app, supports_credentials=True)
+
+#------------------------------------------------------------------------------------------
+
+# Google OAuth Config
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USER_INFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+GOOGLE_REDIRECT_URI = "http://localhost:5000/auth/callback"
+GOOGLE_SCOPES = "openid email profile"
+
+# Authentication required decorator
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "user" not in session:
+            return jsonify({"error": "Unauthorized"}), 401  # Return JSON instead of redirect
+        return func(*args, **kwargs)
+    return wrapper
+
+#------------------------------------------------------------------------------------------
 
 # RESNET Model
 MODEL_PATH_RESNET = "model/Trained_Models/Colab/resnet50.h5"
@@ -195,6 +219,7 @@ processing_lock = threading.Lock()
 active_sessions = {}
 
 @app.route("/predict", methods=["POST"])
+@login_required
 def predict():
     global uploaded_files
     uploaded_files.clear()
@@ -680,6 +705,7 @@ def predict_stream():
 
 
 # @app.route('/download', methods=['GET'])
+@login_required
 # def download_results():
 #     file_path = os.path.join(OUTPUT_FOLDER, "Color_To_Data_Mapping.csv")
 #     if os.path.exists(file_path):
@@ -693,6 +719,78 @@ def predict_stream():
 #             abort(500, description=f"Error sending file: {str(e)}")
 #     else:
 #         abort(404, description="File not found")
+
+
+#------------------------------------------------------------------------------------------
+
+@app.route("/login")
+def login():
+    auth_url = (
+        f"{GOOGLE_AUTHORIZATION_URL}?response_type=code"
+        f"&client_id={GOOGLE_CLIENT_ID}"
+        f"&redirect_uri={GOOGLE_REDIRECT_URI}"
+        f"&scope={GOOGLE_SCOPES}"
+        f"&access_type=offline"
+    )
+    return redirect(auth_url)
+
+
+@app.route("/auth/callback")
+def auth_callback():
+    code = request.args.get("code")
+    if code:
+        # Exchange code for token
+        data = {
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+        response = requests.post(GOOGLE_TOKEN_URL, data=data)
+        token_info = response.json()
+
+        if "access_token" not in token_info:
+            return "Login failed", 401
+
+        # Get user info
+        headers = {"Authorization": f"Bearer {token_info['access_token']}"}
+        user_info = requests.get(GOOGLE_USER_INFO_URL, headers=headers).json()
+
+        # Store user in session
+        session["user"] = user_info
+        return redirect("http://localhost:5173")  # Redirect to React frontend
+
+    return "Login failed", 401
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return "Successfully logged out"
+
+@app.route("/auth/status")
+def auth_status():
+    if "user" in session:
+        user = session["user"]
+        print(user)
+
+        # return jsonify({"user": session["user"]})
+
+        return jsonify({
+            "user": {
+                "name": user.get("name"),
+                "picture": user.get("picture")
+            }
+        })
+    return jsonify({"error": "Not logged in"}), 401
+
+@app.route("/")
+def index():
+    return "Server Online."
+
+#------------------------------------------------------------------------------------------
+
 
 
 if __name__ == "__main__":
