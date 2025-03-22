@@ -18,15 +18,12 @@ from werkzeug.utils import secure_filename
 from tensorflow.keras.preprocessing.image import load_img
 
 # ------------For Mailing Service
-# from flask_mail import Mail, Message
-# from typing import Optional
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 #-----------For enviroment variables
 from dotenv import load_dotenv
 load_dotenv()
-# from Mail import MailService
 
 
 #----------For locking and creating Session_ID
@@ -128,9 +125,10 @@ OUTPUT_FOLDER = "outputs"
 app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-EMAIL_FOLDER = "emails"
-app.config["EMAIL_FOLDER"] = EMAIL_FOLDER
-os.makedirs(EMAIL_FOLDER, exist_ok=True)
+RESULTS_FOLDER = "static/results"
+app.config["RESULTS_FOLDER"] = RESULTS_FOLDER
+os.makedirs(RESULTS_FOLDER, exist_ok=True)
+
 
 # Clear the Folders
 def clear_folder_contents(folder_path):
@@ -212,6 +210,22 @@ def delete_path(path):
         print(f"Path does not exist: {path}")
         return False
 
+def archive_results(session_id):
+    source_dir = OUTPUT_FOLDER
+    target_dir = RESULTS_FOLDER
+    source_file = "Color_To_Data_Mapping.csv"  
+    new_filename = f"{session_id}.csv"
+
+    source_path = os.path.join(source_dir, source_file)
+    target_path = os.path.join(target_dir, new_filename)
+    try:
+        shutil.copy2(source_path, target_path)
+        print(f"Archived to: {target_path}")
+
+    except Exception as e:
+        print(f"Archive failed: {str(e)}")
+
+
 
 uploaded_files = []
 # Global processing lock and session tracker
@@ -236,10 +250,7 @@ def predict():
     # Generate session ID and directories
     session_id = str(uuid.uuid4())
     upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id)
-    email_dir = os.path.join(app.config["EMAIL_FOLDER"], session_id)
     os.makedirs(upload_dir, exist_ok=True)
-    os.makedirs(email_dir, exist_ok=True)
-    print(email_dir)   # Debugging
     
     # Save files to session directory
     for file in files:
@@ -249,13 +260,13 @@ def predict():
 
     # Get email from frontend request
     # user_email = request.form.get('email')
-    user_email="rajankhade31@gmail.com"
-    if user_email:
-            email_path = os.path.join(email_dir, "user_email.txt")
-            with open(email_path, "w") as f:
-                f.write(user_email)
-            print(f"User email saved to {email_path}")
-
+    # user_email="rajankhade31@gmail.com"
+    # if user_email:
+    #         email_path = os.path.join(email_dir, "user_email.txt")
+    #         with open(email_path, "w") as f:
+    #             f.write(user_email)
+    #         print(f"User email saved to {email_path}")
+    
     print("Files uploaded successfully:", uploaded_files)  # Debugging
     return jsonify({"message": "Files uploaded successfully", "status": "success", "session_id": session_id}), 200
 
@@ -272,7 +283,7 @@ def predict_stream():
         # Clean session ID to prevent path traversal
         session_id = secure_filename(session_id)
         upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id)
-        email_dir = os.path.join(app.config["EMAIL_FOLDER"], session_id)
+        # email_dir = os.path.join(app.config["EMAIL_FOLDER"], session_id)
         
         if not os.path.exists(upload_dir):
             return jsonify({"error": "Invalid session ID"}), 404
@@ -660,44 +671,45 @@ def predict_stream():
                 "progress": progress_updates,
                 "status": "success",
             })
+            # Storing the results in the RESULTS_FOLDER
+            archive_results(session_id)
+
             view_link = f"{os.getenv('APP_URL')}/predict-stream?session_id={session_id}"
+            # Get user email from session data
             if final_data:
-                # Get user email from session data
-                email_path = os.path.join(email_dir, "user_email.txt")
-                if os.path.exists(email_path):
-                    with open(email_path, "r") as f:
-                        user_email = f.read().strip()
-                    
-                    if user_email:
-                        message = Mail(
-                                    from_email=os.getenv('MAIL_DEFAULT_SENDER'),
-                                    to_emails=user_email,
-                                    subject='Choropleth Analysis Complete',
-                                    html_content=f"""
-                                    <h1>Analysis Complete</h1>
-                                    <p>Your choropleth map analysis is ready:</p>
-                                    <a href="{view_link}" style="
-                                        background: #00c3ff;
-                                        color: white;
-                                        padding: 10px 20px;
-                                        text-decoration: none;
-                                        border-radius: 5px;
-                                        display: inline-block;
-                                        margin-top: 15px;
-                                    ">View Results</a>
-                                    """)
-                        
-                        try:
-                            sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
-                            response = sg.send(message)
-                            print(response.status_code)
-                            print(response.body)
-                            print(response.headers)
-                        except Exception as e:
-                            print(e.message)
+                user_email = session["user"]["email"]
+                user_email = user_email.strip()
+                print("USER EMAIL: ",user_email)
+                message = Mail(
+                    from_email=os.getenv('MAIL_DEFAULT_SENDER'),
+                    to_emails=user_email,
+                    subject='Choropleth Analysis Complete',
+                    html_content=f"""
+                    <h1>Analysis Complete</h1>
+                    <p>Your choropleth map analysis is ready:</p>
+                    <a href="{view_link}" style="
+                        background: #00c3ff;
+                        color: white;
+                        padding: 10px 20px;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        display: inline-block;
+                        margin-top: 15px;
+                    ">View Results</a>
+                    """)
+                try:
+                    sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+                    response = sg.send(message)
+                    print(response.status_code)
+                    print(response.body)
+                    print(response.headers)
+                except Exception as e:
+                    print(e.message)
+                
+                
             
 
-            # delete_path(upload_dir)
+            delete_path(upload_dir)
             yield f"data: {final_data}\n\n"
             sys.stdout.flush()
 
@@ -705,7 +717,7 @@ def predict_stream():
 
 
 # @app.route('/download', methods=['GET'])
-@login_required
+# @login_required
 # def download_results():
 #     file_path = os.path.join(OUTPUT_FOLDER, "Color_To_Data_Mapping.csv")
 #     if os.path.exists(file_path):

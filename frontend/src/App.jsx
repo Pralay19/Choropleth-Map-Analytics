@@ -64,7 +64,7 @@ function App() {
       const newSessionId = uploadResponse.data.session_id; // Unique session ID
       console.log("Session ID:", newSessionId," type:",typeof(newSessionId));
       setSessionID(newSessionId);
-      const source = new EventSource(`http://localhost:5000/predict-stream?session_id=${newSessionId}`);
+      const source = new EventSource(`http://localhost:5000/predict-stream?session_id=${newSessionId}`,{withCredentials:true});
 
       source.onmessage = (event) => {
         try {
