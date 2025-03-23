@@ -22,6 +22,7 @@ import {Avatar} from "primereact/avatar";
 import {Menu} from "primereact/menu";
 import Loader from "./components/Loader.jsx";
 import Loader_Text from "./components/Loader_Text.jsx";
+import Footer from "./components/Footer.jsx";
 
 function App() {
   // confiuration for prime react
@@ -389,6 +390,7 @@ function App() {
           <Route path="/visualize" element={<UsaChoroplethMaps parsedData={JSON.parse(JSON.stringify(results))} files={files} />} />
         </Routes>
       </div>
+        <div><Footer/></div>
     </Router>
       </PrimeReactProvider>
   );
