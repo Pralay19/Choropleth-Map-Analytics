@@ -13,11 +13,15 @@ import "primereact/resources/themes/lara-dark-teal/theme.css";
 // import "primereact/resources/themes/lara-light-teal/fonts/InterVariable.woff2"
 import "primeicons/primeicons.css"
 
+import Papa from "papaparse";
+
 import { PrimeReactProvider } from 'primereact/api';
 import { FileUpload } from 'primereact/fileupload';
 import { Button } from 'primereact/button';
 import {Avatar} from "primereact/avatar";
 import {Menu} from "primereact/menu";
+import Loader from "./components/Loader.jsx";
+import Loader_Text from "./components/Loader_Text.jsx";
 
 function App() {
   // confiuration for prime react
@@ -105,7 +109,7 @@ function App() {
   
   const handleDownload = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/download", {
+      const response = await axios.get(`http://localhost:5000/static/results/${sessionID}.csv`, {
         responseType: "blob", // Important for handling binary data
           withCredentials: true,
       });
@@ -203,6 +207,53 @@ function App() {
             }
         };
         fetchUser();
+
+
+        // If user opened the page from email
+        const params = new URLSearchParams(window.location.search);
+        const hasSessionId = params.has('session_id');
+
+        const setupEmailedResults = async () => {
+            const sessionId = params.get('session_id');
+          setSessionID(sessionId)
+
+          try {
+              const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}/${sessionId}.csv`, { responseType: 'text' });
+              // const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}.csv`, { responseType: 'text' });
+              await new Promise(resolve => setTimeout(resolve, 10 * 1000));
+
+              const result = Papa.parse(resCsv.data, { header: true }).data;
+              result.pop(); // remove empty item
+              // console.log(result); // JSON array
+
+
+              const fileNames = Object.values(result[result.length-1]);
+              for(let i=1; i<=fileNames.length-1; i++) {
+                const res = await axios.get(`http://localhost:5000/static/results/${sessionId}/${fileNames[i]}`, { responseType: 'blob' });
+                const file = new File([res.data], fileNames[i], { type: res.data.type });
+                setFiles(prev => [...prev, file]);
+              }
+
+              setResults(result);
+
+              setProgress([
+                { step: 1, label: "Uploading Images to Server", status: "completed" },
+                { step: 2, label: "Classification of Map Legend Type", status: "completed" },
+                { step: 3, label: "Segmentation of Map Components", status: "completed" },
+                { step: 4, label: "Segmentation of State Boundaries", status: "completed" },
+                { step: 5, label: "Text Data Extraction using OCR", status: "completed" },
+                { step: 6, label: "State Color to Legend Data Mapping", status: "completed" }
+              ]);
+            } catch (err) {
+              console.log(err);
+              setSessionID(null)
+              setError("Your data might have been deleted from our servers, due to it being uploaded long period ago!")
+            }
+        }
+
+        if (hasSessionId) {
+          setupEmailedResults()
+        }
     }, []);
 
     const handleLogin = () => {
@@ -227,9 +278,9 @@ function App() {
       <div className="app-container">
           <div style={{marginBottom: 10, display: "flex", justifyContent: "end", alignItems: "center", gap: 10}}>
               {user ? (<>
-                  <div><span style={{color: "var(--primary-color)"}}>Hello</span>, <span style={{fontSize: "2rem"}}>{user.name}</span></div>
+                  <div><span style={{color: "var(--primary-color)"}}>Hello</span>, <span style={{fontSize: "1.5rem"}}>{user.name}</span></div>
                   <div style={{flexGrow: 1}}></div>
-                <Avatar image={user.picture} size="xlarge" shape="circle"
+                <Avatar image={user.picture} size="large" shape="circle"
                         imageFallback="http://localhost:5000/static/images/fallback_profile_image.png"
                 />
 
@@ -288,8 +339,15 @@ function App() {
     </div>
 </div>
               {user ? (<>
+                  {progress.length<=0 && sessionID &&(
+                      <div className="loader-container">
+                          <Loader />
+                          <Loader_Text />
+                      </div>
+                  )}
+
                 {/* File Upload Form */}
-                {progress.length<=0 && (<div className="form-container">
+                {progress.length<=0 && !sessionID && (<div className="form-container">
                   <FileUpload
                       multiple
                       accept="image/*"
@@ -321,9 +379,9 @@ function App() {
                   </div>
                 )}
               </>) : (
-                    <div style={{marginBlock: "20px"}}>
-                        <Button label="Sign in with Google" icon="pi pi-google" onClick={handleLogin}></Button>
-                    </div>
+                <div style={{marginBlock: "20px"}}>
+                    <Button label="Sign in with Google" icon="pi pi-google" onClick={handleLogin}></Button>
+                </div>
                 )}
               </>
             }

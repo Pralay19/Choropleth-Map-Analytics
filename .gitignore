@@ -6,3 +6,6 @@ outputs
 .env
 sendgrid.env
 emails
+
+backend/static/results/*
+!backend/static/results/.gitkeep

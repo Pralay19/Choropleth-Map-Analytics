@@ -674,7 +674,7 @@ def predict_stream():
             # Storing the results in the RESULTS_FOLDER
             archive_results(session_id)
 
-            view_link = f"{os.getenv('APP_URL')}/predict-stream?session_id={session_id}"
+            view_link = f"{os.getenv('APP_URL')}/?session_id={session_id}"
             # Get user email from session data
             if final_data:
                 user_email = session["user"]["email"]

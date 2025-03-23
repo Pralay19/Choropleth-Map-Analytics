@@ -290,3 +290,10 @@
   width: 10px;
   height: 10px;
 }
+
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /*margin-top: 50px;*/
+}
