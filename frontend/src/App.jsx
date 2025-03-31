@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from "react";
+import {useState, useEffect, useRef} from "react";
 import { 
   BrowserRouter as Router,
   Routes,
@@ -23,6 +23,8 @@ import {Menu} from "primereact/menu";
 import Loader from "./components/Loader.jsx";
 import Loader_Text from "./components/Loader_Text.jsx";
 import {Dialog} from "primereact/dialog";
+import TypewriterMarkdown from "./components/TypewriterMarkdown.jsx";
+import {Toast} from "primereact/toast";
 
 function App() {
   // confiuration for prime react
@@ -39,7 +41,9 @@ function App() {
   const [sessionID, setSessionID] = useState(null);
 
   const [aiSummaryVisible, setAISummaryVisible] = useState(false);
+  const [aiSummaryAnimate, setAISummaryAnimate] = useState(true)
 
+  const toast = useRef(null);
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
@@ -199,6 +203,17 @@ function App() {
     window.scrollTo(0, 0); // Scroll to top-left
   };
 
+  const copySharableLink = () => {
+    const copyLink = `http://localhost:5173/?session_id=${sessionID}`;
+    navigator.clipboard.writeText(copyLink)
+        .then(() => {
+            toast.current.show({ severity: 'success', summary: 'Success', detail: 'Successfully copied link!', life: 3000 });
+        })
+        .catch(() => {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to copy link!', life: 3000 });
+        });
+  };
+
   // ============================================
     const [user, setUser] = useState(null);
 
@@ -282,6 +297,7 @@ function App() {
 
   return (
       <PrimeReactProvider value={primeReactConfig}>
+          <Toast ref={toast} />
     <Router>
       <div className="app-container">
           <div style={{marginBottom: 10, display: "flex", justifyContent: "end", alignItems: "center", gap: 10}}>
@@ -373,7 +389,11 @@ function App() {
 
                 {results && (
                   <div className="results-section">
-                    <h3 className="subtitle">Results</h3>
+                    <h3 className="subtitle">Results
+                        <Button label="Share" icon="pi pi-share-alt" rounded text aria-label="Share" iconPos="right" onClick={copySharableLink}
+                                tooltip="Copy link to results"
+                        />
+                    </h3>
                     {renderTable()}
 
                     <div className="action-buttons">
@@ -392,8 +412,14 @@ function App() {
                 </div>
                 )}
 
-                <Dialog header="AI Generated Summary" visible={aiSummaryVisible} style={{ width: '90vw' }} onHide={() => {if (!aiSummaryVisible) return; setAISummaryVisible(false); }}>
-                    <pre style={{textAlign: 'left', textWrap: 'wrap'}}><code>{aiGenerateSummary}</code></pre>
+                <Dialog header="AI Generated Summary" visible={aiSummaryVisible} style={{ width: '90vw' }}
+                        onHide={() => {
+                            if (!aiSummaryVisible) return;
+                            setAISummaryVisible(false);
+                            setAISummaryAnimate(false)
+                        }}
+                >
+                    <TypewriterMarkdown text={aiGenerateSummary} speed={50} animate={aiSummaryAnimate} />
                 </Dialog>
               </>
             }
