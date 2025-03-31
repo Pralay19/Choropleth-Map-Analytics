@@ -109,7 +109,7 @@ function App() {
   
   const handleDownload = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/static/results/${sessionID}.csv`, {
+      const response = await axios.get(`http://localhost:5000/static/results/${sessionID}/data.csv`, {
         responseType: "blob", // Important for handling binary data
           withCredentials: true,
       });
@@ -218,8 +218,7 @@ function App() {
           setSessionID(sessionId)
 
           try {
-              const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}/${sessionId}.csv`, { responseType: 'text' });
-              // const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}.csv`, { responseType: 'text' });
+              const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}/data.csv`, { responseType: 'text' });
               // await new Promise(resolve => setTimeout(resolve, 10 * 1000));
 
               const result = Papa.parse(resCsv.data, { header: true }).data;

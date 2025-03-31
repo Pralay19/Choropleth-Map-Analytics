@@ -212,9 +212,9 @@ def delete_path(path):
 
 def archive_results(session_id):
     source_dir = OUTPUT_FOLDER
-    target_dir = RESULTS_FOLDER
+    target_dir = os.path.join(RESULTS_FOLDER, session_id)
     source_file = "Color_To_Data_Mapping.csv"  
-    new_filename = f"{session_id}.csv"
+    new_filename = "data.csv"
 
     source_path = os.path.join(source_dir, source_file)
     target_path = os.path.join(target_dir, new_filename)
@@ -252,11 +252,22 @@ def predict():
     upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id)
     os.makedirs(upload_dir, exist_ok=True)
     
-    # Save files to session directory
+    # Save files to session directory in UPLOAD_FOLDER
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(upload_dir, filename)
         file.save(filepath)
+
+    # Store uploaded files in the static/results/{session_id} folder
+    session_dir = os.path.join(app.config["RESULTS_FOLDER"], session_id)
+    os.makedirs(session_dir, exist_ok=True)
+    for file in files:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(upload_dir, filename)
+        shutil.copy(filepath, session_dir)
+        uploaded_files.append(filename)
+
+
 
     # Get email from frontend request
     # user_email = request.form.get('email')
