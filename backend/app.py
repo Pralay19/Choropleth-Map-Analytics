@@ -40,6 +40,9 @@ from skimage.measure import label, regionprops
 # OCR
 from paddleocr import PaddleOCR
 
+from utils.summary_helper import generate_summary
+
+
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)     # session secret
@@ -215,6 +218,18 @@ def archive_results(session_id):
     target_dir = os.path.join(RESULTS_FOLDER, session_id)
     source_file = "Color_To_Data_Mapping.csv"  
     new_filename = "data.csv"
+
+    source_path = os.path.join(source_dir, source_file)
+    target_path = os.path.join(target_dir, new_filename)
+    try:
+        shutil.copy2(source_path, target_path)
+        print(f"Archived to: {target_path}")
+
+    except Exception as e:
+        print(f"Archive failed: {str(e)}")
+
+    source_file = "ai_generated_summary.txt"
+    new_filename = "ai_generated_summary.txt"
 
     source_path = os.path.join(source_dir, source_file)
     target_path = os.path.join(target_dir, new_filename)
@@ -670,6 +685,14 @@ def predict_stream():
             df = df._append(title_to_filename_mapping, ignore_index=True)
             df.to_csv(output_file_path, index=False)
 
+
+            # Generate Summary
+            ai_generated_summary = generate_summary(','.join(df.columns[1:]), df.to_csv(index=False, lineterminator='\n'))
+            # Save to file
+            with open(f"{OUTPUT_FOLDER}/ai_generated_summary.txt", "w", encoding="utf-8") as file:
+                file.write(ai_generated_summary)
+
+
             progress_updates[5]["status"] = "completed"
             yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
             print("\nColor-to-data mapping completed")
@@ -677,8 +700,11 @@ def predict_stream():
             # Sending results to the frontend
             results = df.to_dict(orient='records')
             # print(results)
+
+
             final_data = json.dumps({
                 "Results": results,
+                "Summary": ai_generated_summary,
                 "progress": progress_updates,
                 "status": "success",
             })

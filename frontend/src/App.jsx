@@ -22,6 +22,7 @@ import {Avatar} from "primereact/avatar";
 import {Menu} from "primereact/menu";
 import Loader from "./components/Loader.jsx";
 import Loader_Text from "./components/Loader_Text.jsx";
+import {Dialog} from "primereact/dialog";
 
 function App() {
   // confiuration for prime react
@@ -33,8 +34,11 @@ function App() {
   const [files, setFiles] = useState([]);
   const [progress, setProgress] = useState([]);
   const [results, setResults] = useState(null);
+  const [aiGenerateSummary, setAIGeneratedSummary] = useState(null)
   const [error, setError] = useState(null);
   const [sessionID, setSessionID] = useState(null);
+
+  const [aiSummaryVisible, setAISummaryVisible] = useState(false);
 
 
   // Handle file selection (allow multiple files)
@@ -58,6 +62,7 @@ function App() {
       setError(null);
       setProgress([]);
       setResults(null);
+      setAIGeneratedSummary(null)
       setSessionID(null);
       
      const uploadResponse = await axios.post("http://localhost:5000/predict", formData, {
@@ -80,6 +85,7 @@ function App() {
           
           if (data.Results) {
             setResults(data.Results);
+            setAIGeneratedSummary(data.Summary);
             source.close();
           }
         } catch (err) {
@@ -226,6 +232,9 @@ function App() {
               // console.log(result); // JSON array
 
 
+              const resAIGeneratedSummary = await axios.get(`http://localhost:5000/static/results/${sessionId}/ai_generated_summary.txt`, { responseType: 'text' });
+              setAIGeneratedSummary(resAIGeneratedSummary.data)
+
               const fileNames = Object.values(result[result.length-1]);
               for(let i=1; i<=fileNames.length-1; i++) {
                 const res = await axios.get(`http://localhost:5000/static/results/${sessionId}/${fileNames[i]}`, { responseType: 'blob' });
@@ -246,7 +255,7 @@ function App() {
             } catch (err) {
               console.log(err);
               setSessionID(null)
-              setError("Your data might have been deleted from our servers, due to it being uploaded long period ago!")
+              setError("Your data may have been deleted from our servers due to being uploaded a long time ago, or something went wrong!")
             }
         }
 
@@ -373,7 +382,7 @@ function App() {
                       </Link>
 
                         <Button label="Download Results" onClick={handleDownload} icon="pi pi-download" severity='success' rounded raised/>
-                        <GlowingButton label="AI" onClick={() => {/*  */}} />
+                        <GlowingButton label="AI" onClick={() => setAISummaryVisible(true)} />
                     </div>
                   </div>
                 )}
@@ -382,6 +391,10 @@ function App() {
                     <Button label="Sign in with Google" icon="pi pi-google" onClick={handleLogin}></Button>
                 </div>
                 )}
+
+                <Dialog header="AI Generated Summary" visible={aiSummaryVisible} style={{ width: '90vw' }} onHide={() => {if (!aiSummaryVisible) return; setAISummaryVisible(false); }}>
+                    <pre style={{textAlign: 'left', textWrap: 'wrap'}}><code>{aiGenerateSummary}</code></pre>
+                </Dialog>
               </>
             }
           />

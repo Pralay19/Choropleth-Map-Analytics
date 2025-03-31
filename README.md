@@ -15,6 +15,8 @@
 - 404 Page
 - Footer w/o tailwindscss
 
+- ensure proper permissions for folders
+
 ### Security
 - check firewall exposed ports
 
