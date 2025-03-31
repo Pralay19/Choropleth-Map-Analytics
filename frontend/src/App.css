@@ -222,12 +222,12 @@
   }
   
   .results-table {
-    margin: 20px auto;
+    /*margin: 20px auto;*/
     border-collapse: collapse;
-    width: 90%;
+    width: 100%;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    overflow: hidden;
+    /*overflow: hidden;*/
   }
   
   .results-table th {
@@ -236,6 +236,8 @@
     color: #fff;
     text-align: left;
     font-weight: 600;
+    position: sticky;
+    top: 0;
   }
   
   .results-table td {

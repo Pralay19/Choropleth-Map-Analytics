@@ -1,4 +1,4 @@
-Production Changes
+### Production Changes
 
 - Change Google OAuth credentials
 - Change email client credentials
@@ -12,3 +12,11 @@ Production Changes
 
 
 - make pages responsive to screen sizes
+- 404 Page
+- Footer w/o tailwindscss
+
+### Security
+- check firewall exposed ports
+
+### Testing
+- Test with unseen images

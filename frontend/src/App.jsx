@@ -165,7 +165,7 @@ function App() {
     const headers = Object.keys(results[0]); 
 
     return (
-        <div style={{overflowY: 'auto'}}>
+        <div style={{overflow: 'auto', maxHeight: 500, marginBlock: 20}}>
           <table className="results-table">
             <thead>
             <tr>
@@ -220,7 +220,7 @@ function App() {
           try {
               const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}/${sessionId}.csv`, { responseType: 'text' });
               // const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}.csv`, { responseType: 'text' });
-              await new Promise(resolve => setTimeout(resolve, 10 * 1000));
+              // await new Promise(resolve => setTimeout(resolve, 10 * 1000));
 
               const result = Papa.parse(resCsv.data, { header: true }).data;
               result.pop(); // remove empty item
