@@ -42,12 +42,24 @@ from paddleocr import PaddleOCR
 
 from utils.summary_helper import generate_summary
 
+# Putting Up the rate limiter
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+
+
+
+
 
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)     # session secret
 
 CORS(app, supports_credentials=True)
+
+#Initializing the rate limiter
+limiter = Limiter(get_remote_address, app=app, default_limits=["100 per minute"])
+
 
 #------------------------------------------------------------------------------------------
 
@@ -247,8 +259,16 @@ uploaded_files = []
 processing_lock = threading.Lock()
 active_sessions = {}
 
+
+@app.route("/")
+@limiter.limit("10 per second")
+def home():
+    return "Server is running!"
+
+
 @app.route("/predict", methods=["POST"])
 @login_required
+@limiter.limit("10 per second")
 def predict():
     global uploaded_files
     uploaded_files.clear()
