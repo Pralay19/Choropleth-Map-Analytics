@@ -44,10 +44,15 @@ function App() {
   const [aiSummaryAnimate, setAISummaryAnimate] = useState(true)
 
   const toast = useRef(null);
+  const fileuploadRef = useRef(null);
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
-    setFiles(Array.from(e.files));
+    if (e.files.length > 10) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: 'Please select maximum of 10 files!', life: 3000 });
+      fileuploadRef.current.clear();
+    }
+    else setFiles(Array.from(e.files));
   };
 
   
@@ -56,6 +61,11 @@ function App() {
       alert("Please select one or more files.");
       return;
     }
+    if (files.length > 10) {
+      alert("Please select a maximum of 10 files.");
+      return;
+    }
+
 
     const formData = new FormData();
     files.forEach((file) => {
@@ -373,6 +383,7 @@ function App() {
                 {/* File Upload Form */}
                 {progress.length<=0 && !sessionID && (<div className="form-container">
                   <FileUpload
+                      ref={fileuploadRef}
                       multiple
                       accept="image/*"
                       onSelect={handleFileChange}

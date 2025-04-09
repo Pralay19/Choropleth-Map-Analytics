@@ -276,6 +276,10 @@ def predict():
     if "files" not in request.files:
         return jsonify({"error": "No files provided"}), 400
 
+    # Check if number of files is more than 10
+    if len(request.files.getlist("files")) > 10:
+        return jsonify({"error": "Maximum 10 files allowed"}), 400
+
     files = request.files.getlist("files")
     if not files or all(file.filename == "" for file in files):
         return jsonify({"error": "No files selected"}), 400
