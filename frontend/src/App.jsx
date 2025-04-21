@@ -69,7 +69,7 @@ function App() {
       setAIGeneratedSummary(null)
       setSessionID(null);
       
-     const uploadResponse = await axios.post("http://localhost:5000/predict", formData, {
+     const uploadResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/predict`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
          withCredentials: true,
       });
@@ -77,7 +77,7 @@ function App() {
       const newSessionId = uploadResponse.data.session_id; // Unique session ID
       console.log("Session ID:", newSessionId," type:",typeof(newSessionId));
       setSessionID(newSessionId);
-      const source = new EventSource(`http://localhost:5000/predict-stream?session_id=${newSessionId}`,{withCredentials:true});
+      const source = new EventSource(`${import.meta.env.VITE_BACKEND_URL}/predict-stream?session_id=${newSessionId}`,{withCredentials:true});
 
       source.onmessage = (event) => {
         try {
@@ -119,7 +119,7 @@ function App() {
   
   const handleDownload = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/static/results/${sessionID}/data.csv`, {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/static/results/${sessionID}/data.csv`, {
         responseType: "blob", // Important for handling binary data
           withCredentials: true,
       });
@@ -204,7 +204,7 @@ function App() {
   };
 
   const copySharableLink = () => {
-    const copyLink = `http://localhost:5173/?session_id=${sessionID}`;
+    const copyLink = `${import.meta.env.VITE_FRONTEND_URL}/?session_id=${sessionID}`;
     navigator.clipboard.writeText(copyLink)
         .then(() => {
             toast.current.show({ severity: 'success', summary: 'Success', detail: 'Successfully copied link!', life: 3000 });
@@ -220,7 +220,7 @@ function App() {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const response = await axios.get("http://localhost:5000/auth/status", {withCredentials: true});
+                const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/auth/status`, {withCredentials: true});
                 setUser(response.data.user);
             } catch (error) {
                 setUser(null);
@@ -239,7 +239,7 @@ function App() {
           setSessionID(sessionId)
 
           try {
-              const resCsv = await axios.get(`http://localhost:5000/static/results/${sessionId}/data.csv`, { responseType: 'text' });
+              const resCsv = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/static/results/${sessionId}/data.csv`, { responseType: 'text' });
               // await new Promise(resolve => setTimeout(resolve, 10 * 1000));
 
               const result = Papa.parse(resCsv.data, { header: true }).data;
@@ -247,12 +247,12 @@ function App() {
               // console.log(result); // JSON array
 
 
-              const resAIGeneratedSummary = await axios.get(`http://localhost:5000/static/results/${sessionId}/ai_generated_summary.txt`, { responseType: 'text' });
+              const resAIGeneratedSummary = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/static/results/${sessionId}/ai_generated_summary.txt`, { responseType: 'text' });
               setAIGeneratedSummary(resAIGeneratedSummary.data)
 
               const fileNames = Object.values(result[result.length-1]);
               for(let i=1; i<=fileNames.length-1; i++) {
-                const res = await axios.get(`http://localhost:5000/static/results/${sessionId}/${fileNames[i]}`, { responseType: 'blob' });
+                const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/static/results/${sessionId}/${fileNames[i]}`, { responseType: 'blob' });
                 const file = new File([res.data], fileNames[i], { type: res.data.type });
                 setFiles(prev => [...prev, file]);
               }
@@ -280,13 +280,13 @@ function App() {
     }, []);
 
     const handleLogin = () => {
-        window.location.href = "http://localhost:5000/login";
+        window.location.href = `${import.meta.env.VITE_BACKEND_URL}/login`;
     };
 
     const handleLogout = async () => {
         setUser(null)
         try {
-            await axios.get("http://localhost:5000/logout", {withCredentials: true});
+            await axios.get(`${import.meta.env.VITE_BACKEND_URL}/logout`, {withCredentials: true});
         } catch (error) {
             console.log(error)
         }
@@ -305,7 +305,7 @@ function App() {
                   <div><span style={{color: "var(--primary-color)"}}>Hello</span>, <span style={{fontSize: "1.5rem"}}>{user.name}</span></div>
                   <div style={{flexGrow: 1}}></div>
                 <Avatar image={user.picture} size="large" shape="circle"
-                        imageFallback="http://localhost:5000/static/images/fallback_profile_image.png"
+                        imageFallback={`/images/fallback_profile_image.png`}
                 />
 
                   <Menu popup ref={dropDownRef} style={{marginTop: "10px"}}
@@ -331,7 +331,7 @@ function App() {
     textAlign: 'center', 
     fontFamily: "'Poppins', sans-serif", 
     padding: '30px',
-    background: 'url("src/wall7.png") center/cover no-repeat, #1a1a1a',
+    background: 'url("/images/wall7.png") center/cover no-repeat, #1a1a1a',
     backdropFilter:'20px',
     color: 'white',
     borderRadius:'35px'

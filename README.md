@@ -21,6 +21,9 @@
 ### Security
 - check firewall exposed ports
 - CSRF token in form
+- cookies
+  - expiry
+  - rules (samesite, etc.)
 
 ### Testing
 - Test with unseen images

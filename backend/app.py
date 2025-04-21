@@ -52,7 +52,7 @@ from flask_limiter.util import get_remote_address
 
 
 load_dotenv()
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static/frontend")
 app.secret_key = os.urandom(24)     # session secret
 
 CORS(app, supports_credentials=True)
@@ -69,7 +69,7 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USER_INFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
-GOOGLE_REDIRECT_URI = "http://localhost:5000/auth/callback"
+GOOGLE_REDIRECT_URI = f"{os.getenv('BACKEND_URL')}/auth/callback"
 GOOGLE_SCOPES = "openid email profile"
 
 # Authentication required decorator
@@ -144,6 +144,7 @@ RESULTS_FOLDER = "static/results"
 app.config["RESULTS_FOLDER"] = RESULTS_FOLDER
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 # Clear the Folders
 def clear_folder_contents(folder_path):
@@ -258,12 +259,6 @@ uploaded_files = []
 # Global processing lock and session tracker
 processing_lock = threading.Lock()
 active_sessions = {}
-
-
-@app.route("/")
-@limiter.limit("10 per second")
-def home():
-    return "Server is running!"
 
 
 @app.route("/predict", methods=["POST"])
@@ -731,7 +726,7 @@ def predict_stream():
             # Storing the results in the RESULTS_FOLDER
             archive_results(session_id)
 
-            view_link = f"{os.getenv('APP_URL')}/?session_id={session_id}"
+            view_link = f"{FRONTEND_URL}/?session_id={session_id}"
             # Get user email from session data
             if final_data:
                 user_email = session["user"]["email"]
@@ -828,7 +823,7 @@ def auth_callback():
 
         # Store user in session
         session["user"] = user_info
-        return redirect("http://localhost:5173")  # Redirect to React frontend
+        return redirect(FRONTEND_URL)  # Redirect to React frontend
 
     return "Login failed", 401
 
@@ -854,15 +849,23 @@ def auth_status():
         })
     return jsonify({"error": "Not logged in"}), 401
 
-@app.route("/")
-def index():
-    return "Server Online."
+
+
+@app.route('/static/results/<path:filename>')
+def serve_results(filename):
+    return send_from_directory('static/results', filename)
+
+@app.route("/", defaults={"path": "index.html"})
+@app.route("/<path:path>")
+@limiter.limit("10 per second")
+def serve_react(path):
+    return send_from_directory(app.static_folder, path)
 
 #------------------------------------------------------------------------------------------
 
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",debug=True, use_reloader=False)
+    app.run(host="0.0.0.0",debug=False, use_reloader=False)
 
 

@@ -11,3 +11,5 @@ backend/static/results/*
 !backend/static/results/.gitkeep
 backend/utils/__pycache__/__init__.cpython-39.pyc
 backend/utils/__pycache__/summary_helper.cpython-39.pyc
+
+backend/static/frontend
