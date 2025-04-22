@@ -31,3 +31,6 @@
 ### VM
 
 `ssh iiitb@cma-vm -L 4040:localhost:4040`
+
+### Production
+- cookie secure true

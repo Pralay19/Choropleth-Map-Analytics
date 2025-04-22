@@ -46,6 +46,7 @@ from utils.summary_helper import generate_summary
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+from datetime import timedelta
 
 
 
@@ -56,6 +57,19 @@ app = Flask(__name__, static_folder="static/frontend")
 app.secret_key = os.urandom(24)     # session secret
 
 CORS(app, supports_credentials=True)
+
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,   # Prevent JS access
+    SESSION_COOKIE_SECURE=False,     # Only over HTTPS
+    SESSION_COOKIE_SAMESITE='Lax',   # Protect against CSRF
+    PERMANENT_SESSION_LIFETIME=timedelta(days=7)
+)
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
 
 #Initializing the rate limiter
 limiter = Limiter(get_remote_address, app=app, default_limits=["100 per minute"])
