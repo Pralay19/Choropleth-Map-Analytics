@@ -759,7 +759,7 @@ def predict_stream():
 
                 yield f"data: {final_data}\n\n"
 
-                view_link = f"{os.getenv('APP_URL')}/?session_id={session_id}"
+                view_link = f"{FRONTEND_URL}/?session_id={session_id}"
                 # Get user email from session data
                 if final_data:
                     user_email = session["user"]["email"]
