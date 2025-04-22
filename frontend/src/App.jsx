@@ -458,8 +458,7 @@ function App() {
 
                 {/* Error Handling */}
                 <Messages ref={msg}  />
-                {error && <div >
-                      
+                {error && <div style={{marginBlock: "20px"}}>
                       <Button label="Try Again" icon="pi pi-refresh" onClick={() => window.location.reload()} severity="danger" rounded raised/>
                   </div>}
               </>) : (
