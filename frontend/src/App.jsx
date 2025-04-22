@@ -25,6 +25,8 @@ import Loader_Text from "./components/Loader_Text.jsx";
 import {Dialog} from "primereact/dialog";
 import TypewriterMarkdown from "./components/TypewriterMarkdown.jsx";
 import {Toast} from "primereact/toast";
+import { Messages } from 'primereact/messages';
+
 
 function App() {
   // confiuration for prime react
@@ -44,10 +46,16 @@ function App() {
   const [aiSummaryAnimate, setAISummaryAnimate] = useState(true)
 
   const toast = useRef(null);
+  const msg = useRef(null);
+  const fileuploadRef = useRef(null);
 
   // Handle file selection (allow multiple files)
   const handleFileChange = (e) => {
-    setFiles(Array.from(e.files));
+    if (e.files.length > 10) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: 'Please select maximum of 10 files!', life: 3000 });
+      fileuploadRef.current.clear();
+    }
+    else setFiles(Array.from(e.files));
   };
 
   
@@ -56,6 +64,11 @@ function App() {
       alert("Please select one or more files.");
       return;
     }
+    if (files.length > 10) {
+      alert("Please select a maximum of 10 files.");
+      return;
+    }
+
 
     const formData = new FormData();
     files.forEach((file) => {
@@ -92,14 +105,21 @@ function App() {
             setAIGeneratedSummary(data.Summary);
             source.close();
           }
+          if(data.status==="fail"){
+            setResults(null);
+            setError("Image uploaded is not a valid choropleth map image. Please upload a valid image.");
+            showMsg("Image uploaded is not a valid choropleth map image. Please upload a valid image.");
+            setAIGeneratedSummary(data.Summary);
+            source.close();
+          }
         } catch (err) {
           console.error("Error parsing SSE data", err);
         }
       };
-
+      
       source.onerror = () => {
         source.close();
-        setError("Error receiving updates");
+        setError("Error receiving updatesHELLO");
       };
     } catch (err) {
       console.error(err);
@@ -154,6 +174,7 @@ function App() {
           if (isCompleted) circleClass += " step-completed";
           if (isProcessing) circleClass += " step-processing";
           if (isPending) circleClass += " step-pending";
+
 
           return (
             <div className="step-item" key={index}>
@@ -291,6 +312,12 @@ function App() {
             console.log(error)
         }
     }
+    
+    const showMsg = (error) => {
+        msg.current.show({ id: '1', sticky: true, severity: 'error', summary: 'Error', detail: error, closable: false });
+        
+    }
+
   // ============================================
 
     const dropDownRef = useRef(null)
@@ -298,6 +325,7 @@ function App() {
   return (
       <PrimeReactProvider value={primeReactConfig}>
           <Toast ref={toast} />
+          
     <Router>
       <div className="app-container">
           <div style={{marginBottom: 10, display: "flex", justifyContent: "end", alignItems: "center", gap: 10}}>
@@ -373,8 +401,10 @@ function App() {
                 {/* File Upload Form */}
                 {progress.length<=0 && !sessionID && (<div className="form-container">
                   <FileUpload
+                      ref={fileuploadRef}
                       multiple
                       accept="image/*"
+                      maxFileSize={500000} // 500 KB
                       onSelect={handleFileChange}
                       onClear={() => setFiles([])}
                       onRemove={(e) => setFiles(files.filter((f) => f !== e.file))}
@@ -383,9 +413,11 @@ function App() {
                   />
                 </div>)}
 
-                {error && <p className="error-message">{error}</p>}
+                
+                
 
-                {progress && progress.length > 0 && renderStepper()}
+
+                {progress && progress.length > 0 && !error && renderStepper()}
 
                 {results && (
                   <div className="results-section">
@@ -395,8 +427,9 @@ function App() {
                         />
                     </h3>
                     {renderTable()}
-
+                  
                     <div className="action-buttons">
+                      <Button label="New Analysis" onClick={() => window.location.reload()} icon="pi pi-refresh" severity="help" rounded raised/>
                       <Link to="/visualize">
                         <Button label="View Visualizations" onClick={handleVisualizeClick} icon="pi pi-chart-bar" severity="info" rounded raised/>
                       </Link>
@@ -406,6 +439,13 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                {/* Error Handling */}
+                <Messages ref={msg}  />
+                {error && <div >
+                      
+                      <Button label="Try Again" icon="pi pi-refresh" onClick={() => window.location.reload()} severity="danger" rounded raised/>
+                  </div>}
               </>) : (
                 <div style={{marginBlock: "20px"}}>
                     <Button label="Sign in with Google" icon="pi pi-google" onClick={handleLogin}></Button>
