@@ -27,3 +27,7 @@
 
 ### Testing
 - Test with unseen images
+
+### VM
+
+`ssh iiitb@cma-vm -L 4040:localhost:4040`

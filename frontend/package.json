@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp -r dist/* ../backend/static/frontend",
+    "build": "vite build && rm -r ../backend/static/frontend && mkdir -p ../backend/static/frontend && cp -r dist/* ../backend/static/frontend",
     "lint": "eslint .",
     "preview": "vite preview"
   },
