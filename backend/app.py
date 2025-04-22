@@ -179,7 +179,10 @@ def process_images(input_dir):
         class_labels = outputs["instances"].pred_classes.to("cpu").numpy()
 
         labeled_mask = label(mask)
-        props = regionprops(labeled_mask)
+        try:
+            props = regionprops(labeled_mask)
+        except Exception as e:
+            return []
 
         for i, prop in enumerate(props):
             bounding_box = tuple(prop.bbox)
@@ -366,10 +369,11 @@ def predict_stream():
                 writer.writerow(["file name", "Type"])
 
                 for filename in os.listdir(upload_dir):
-                    if filename.endswith('.png'):
+                    if filename.endswith(('.png', '.jpg', '.jpeg')):
                         path = os.path.join(upload_dir, filename)
                         img = preprocess_image(path)
                         prediction_resnet = model_resnet.predict(img)
+                        print(f"Prediction for {filename}: {prediction_resnet[0][0]}")
                         img_type = "continuous" if prediction_resnet[0][0] > 0.5 else "discrete"
                         writer.writerow([filename, img_type])
 
@@ -382,396 +386,420 @@ def predict_stream():
             # ANNOTATION DETECTRON2 MODEL BATCH PROCESSING
             output_csv_path = os.path.join(OUTPUT_FOLDER, "output_objects.csv")
             data_annotation = process_images(upload_dir)
-            generate_csv(data_annotation, output_csv_path)
-            progress_updates[2]["status"] = "completed"
-            progress_updates[3]["status"] = "processing"
-            yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
-            print("Processed output saved to CSV.")
-            # -----------------------------------------------------------------------------------------------
-            # DETECTRON2 FOR SEGMENTATION OF STATES
-            output_csv_path = os.path.join(OUTPUT_FOLDER, "output_objects_state_segmentation.csv")
 
-            with open(output_csv_path, 'w', newline='') as csvfile:
-                csvwriter = csv.writer(csvfile)
-                csvwriter.writerow(["File Name", "Class Name", "Object Number", "Centroid", "BoundingBox", "RGB Color"])
+            if(data_annotation==[]):
+                print("No regions found in image.")
+                progress_updates = [
+                {"step": 1, "label": "Uploading Images to Server", "status": "completed"},
+                {"step": 2, "label": "Classification of Map Legend Type", "status": "completed"},
+                {"step": 3, "label": "Segmentation of Map Components", "status": "completed"},
+                {"step": 4, "label": "Segmentation of State Boundaries", "status": "completed"},
+                {"step": 5, "label": "Text Data Extraction using OCR", "status": "completed"},
+                {"step": 6, "label": "State Color to Legend Data Mapping", "status": "completed"}
+                ]
+                results = []
+                ai_generated_summary = "No regions found in image."
+                final_data = json.dumps({
+                    "Results": results,
+                    "Summary": ai_generated_summary,
+                    "progress": progress_updates,
+                    "status": "fail",
+                })
+                # yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
+                yield f"data: {final_data}\n\n"
+            
+            else:
+                generate_csv(data_annotation, output_csv_path)
+                progress_updates[2]["status"] = "completed"
+                progress_updates[3]["status"] = "processing"
+                yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
+                print("Processed output saved to CSV.")
+                # -----------------------------------------------------------------------------------------------
+                # DETECTRON2 FOR SEGMENTATION OF STATES
+                output_csv_path = os.path.join(OUTPUT_FOLDER, "output_objects_state_segmentation.csv")
 
-                for image_filename in os.listdir(upload_dir):
-                    image_path = os.path.join(upload_dir, image_filename)
-                    new_im = cv2.imread(image_path)
+                with open(output_csv_path, 'w', newline='') as csvfile:
+                    csvwriter = csv.writer(csvfile)
+                    csvwriter.writerow(["File Name", "Class Name", "Object Number", "Centroid", "BoundingBox", "RGB Color"])
 
-                    outputs = model_states(new_im)
+                    for image_filename in os.listdir(upload_dir):
+                        image_path = os.path.join(upload_dir, image_filename)
+                        new_im = cv2.imread(image_path)
 
-                    mask = outputs["instances"].pred_masks.to("cpu").numpy().astype(bool)
-                    class_labels = outputs["instances"].pred_classes.to("cpu").numpy()
-                    labeled_mask = label(mask)
-                    props = regionprops(labeled_mask)
+                        outputs = model_states(new_im)
 
-                    for i, prop in enumerate(props):
-                        object_number = i + 1
-                        centroid = prop.centroid
-                        bounding_box = prop.bbox[1:3] + prop.bbox[4:]
+                        mask = outputs["instances"].pred_masks.to("cpu").numpy().astype(bool)
+                        class_labels = outputs["instances"].pred_classes.to("cpu").numpy()
+                        labeled_mask = label(mask)
+                        props = regionprops(labeled_mask)
 
-                        n = int(centroid[0])
+                        for i, prop in enumerate(props):
+                            object_number = i + 1
+                            centroid = prop.centroid
+                            bounding_box = prop.bbox[1:3] + prop.bbox[4:]
 
-                        if i < len(class_labels):
-                            class_label = class_labels[n]
-                            class_name = train_metadata_states.thing_classes[class_label]
-                        else:
-                            class_name = 'Unknown'
+                            n = int(centroid[0])
 
-                        # Extract RGB color value from the centroid position
-                        centroid_x, centroid_y = int(centroid[2]), int(centroid[1])
-                        rgb_color = tuple(new_im[centroid_y, centroid_x])[::-1]
-
-                        csvwriter.writerow([image_filename, class_name, object_number, centroid, bounding_box, rgb_color])
-
-            progress_updates[3]["status"] = "completed"
-            progress_updates[4]["status"] = "processing"
-            yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
-            print("\nObject-level information saved to CSV file.")
-            print("\nSegmentation of all images completed.")
-            # -----------------------------------------------------------------------------------------------
-            # OCR MODEL FOR TEXT EXTRACTION
-            # OCR model
-            ocr_model = PaddleOCR(lang='en')
-
-            df1 = pd.read_csv("outputs/classification.csv")
-            df2 = pd.read_csv("outputs/output_objects.csv")
-            annotations_df = pd.merge(df2, df1, on="file name")
-            img_path = "uploads"
-            data = []
-            for row in annotations_df.itertuples():
-                file_name = row[1]
-                map_type = row[4]
-                title_bounding_box = row[3]
-                legend_bounding_box = row[2]
-                data.append((file_name, map_type, title_bounding_box, legend_bounding_box))
-
-            def convert_to_doubles(low, upper_bound):
-                low = lower_bound.replace(",", "")
-                up = upper_bound.replace(",", "")
-
-                if low and not low[-1].isdigit():
-                    units = low[-1]
-                    low = float(low[:-1])
-                else:
-                    units = 'u'
-                    low = float(low)
-
-                if up and not up[-1].isdigit():
-                    units = up[-1]
-                    up = float(up[:-1])
-                else:
-                    units = 'u'
-                    up = float(up)
-
-                return low, up, units
-
-            def num_there(s):
-                return any(i.isdigit() for i in s)
-
-            def only_num(s):
-                return s.isnumeric()
-
-            def contains_hyphen(text_):
-                return '-' in text_
-
-            def extract_numbers(test_string):
-                numeric_string = ''.join(char for char in test_string if char.isdigit() or char == ',')
-                words = numeric_string.split(',')
-                numbers = [int(i) for i in words]
-                return numbers
-
-            complete_data = []
-
-            for ele in data:
-                file_name = ele[0]
-
-                map_type = ele[1]
-                title_bounding_box = ele[2]
-                legend_bounding_box = ele[3]
-
-                values = extract_numbers(title_bounding_box)
-
-                imgPath = os.path.join(upload_dir, file_name)
-                image = cv2.imread(imgPath)
-
-                y, x, h, w = values
-
-                cropped_img = image[y:y + h, x:x + w]
-                numpydata = asarray(cropped_img)
-
-                result = ocr_model.ocr(numpydata, cls=False)
-                map_title = result[0][0][1][0]
-
-                numerical_info = []
-                values = extract_numbers(legend_bounding_box)
-                y, x, h, w = values
-
-                cropped_img = image[y:y + h, x:x + w]
-                numpydata = asarray(cropped_img)
-                image = cropped_img
-
-                result = ocr_model.ocr(numpydata, cls=False)
-
-                for line in result:
-                    for word in line:
-                        text = word[1][0]
-
-                        x, y, w, h = word[0][0][0], word[0][0][1], abs(word[0][0][0] - word[0][1][0]), abs(
-                            word[0][1][1] - word[0][2][1])
-
-                        x1 = int(x)
-                        y1 = int(y + h // 2)
-                        x2 = int(x)
-                        y2 = int(y + h // 2 - 1)
-
-                        while all(image[y1, x1] == image[y2, x2]):
-                            x2 -= 1
-                        x3 = x2
-                        while all(image[y1, x1] == image[y2, x3]):
-                            x3 -= 1
-
-                        x2 = (x2 + x3) // 2
-                        color = image[y2, x2]
-
-                        blue, green, red = color
-                        numerical_info += [text] + [red, green, blue]
-
-                i = 0
-                value_id = 0
-                while i < len(numerical_info):
-                    value_id += 1
-
-                    if numerical_info[i] != "N/A" and numerical_info[i] != "-" and any(
-                            char.isdigit() for char in numerical_info[i]):  # modified code from original
-                        values = numerical_info[i].split("-")
-
-                        if len(values) > 1:
-                            lower_bound = values[0]
-                            upper_bound = values[1]
-                        else:
-                            lower_bound = values[0]
-                            upper_bound = values[0]
-                        converted_lower_bound, converted_upper_bound, units = convert_to_doubles(lower_bound, upper_bound)
-                        info = [file_name, map_type, map_title, numerical_info[i + 1], numerical_info[i + 2],
-                                numerical_info[i + 3], (converted_lower_bound + converted_upper_bound) / 2, units]
-
-                    else:
-                        values = "N/A"
-                        info = [file_name, map_type, map_title, numerical_info[i + 1], numerical_info[i + 2],
-                                numerical_info[i + 3], values, ""]
-
-                    map_name = img_path.split("/")[-1].split(".")[0]
-                    info = [map_name] + info
-                    complete_data += [info]
-                    i += 4
-
-            output_df = pd.DataFrame(complete_data)
-            df = output_df[output_df[7] != 'N/A']
-
-            combined_column = df.apply(lambda row: f"({row[4]}, {row[5]}, {row[6]})", axis=1)
-            df['RGB color'] = combined_column
-            df.drop([4, 5, 6], axis=1, inplace=True)
-            df.drop([0], axis=1, inplace=True)
-            new_column_names = {
-                1: 'file_name',
-                2: 'map_type',
-                3: 'map_title',
-                7: 'value',
-                8: 'unit'
-            }
-            df = df.rename(columns=new_column_names)
-            df.to_csv("outputs/OCR_output.csv", index=False)
-
-            progress_updates[4]["status"] = "completed"
-            progress_updates[5]["status"] = "processing"
-            yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
-            print("OCR output is saved.")
-            # ------------------------------------------------------------------------------------------------
-            # Color-to-Data Mapping
-            ocr_df = pd.read_csv("outputs/OCR_output.csv")
-            seg_df = pd.read_csv("outputs/output_objects_state_segmentation.csv")
-            output_file_path = "outputs/Color_To_Data_Mapping.csv"
-
-            def getDataForFilename(output_data, filename):
-                return [tuple for tuple in output_data if tuple[0] == filename]
-
-            def getUniqueFilenames(ocr_df):
-                return ocr_df['file_name'].unique().tolist()
-
-            def getMapTitleDictionary(ocr_df, filenames_list):
-                map_dict = {}
-                for filename in filenames_list:
-                    filtered_rows = ocr_df[ocr_df['file_name'] == filename]
-                    row = filtered_rows.iloc[0]
-                    map_dict[filename] = row['map_title']
-
-                return map_dict
-
-            data_a = []
-            data_b = []
-
-            for row in seg_df.itertuples():
-                file_name = row[1]
-                state = row[2]
-                color_str = row[6]
-                color = tuple(int(x) for x in color_str.strip('()').split(', '))
-                data_a.append((file_name, state, color))
-
-            for row in ocr_df.itertuples():
-                file_name = row[1]
-                map_type = row[2]
-                map_title = row[3]
-                color_str = row[6]
-                color = tuple(int(x) for x in color_str.strip('()').split(', '))
-                value = row[4]
-                if value != "'N/A'":
-                    average_value = float(value)
-                else:
-                    average_value = 0
-                unit = row[5]
-                data_b.append((file_name, map_type, map_title, average_value, unit, color))
-
-            output_data = []
-            for file_name, state, state_color in data_a:
-                numerical_data = []
-                for file, map_type, map_title, average_value, unit, color in data_b:
-                    if file_name == file:
-                        numerical_data.append((map_title, map_type, color, average_value, unit))
-                if numerical_data:
-                    mapType = numerical_data[0][1]
-                    if mapType == "discrete":
-                        min_distance = float('inf')
-                        assigned_value = None
-                        assigned_unit = None
-                        for map_title, map_type, color, average_value, unit in numerical_data:
-                            # calculating Euclidean distance
-                            distance = sum((c1 - c2) ** 2 for c1, c2 in zip(state_color, color))
-                            if distance < min_distance:
-                                min_distance = distance
-                                assigned_value = average_value
-                                assigned_unit = unit
-                        output_data.append((file_name, state, assigned_value, assigned_unit))
-                    elif mapType == "continuous":
-                        assigned_value = 0
-                        assigned_unit = numerical_data[0][4]
-                        for i in range(len(numerical_data) - 1):
-                            delta = 0
-                            if i == 0:
-                                delta = 1
-                            elif i == len(numerical_data) - 2:
-                                delta = -0.5
-
-                            colour_1, value_1 = numerical_data[i][2], numerical_data[i][3]
-                            colour_2, value_2 = numerical_data[i + 1][2], numerical_data[i + 1][3]
-
-                            A = []
-                            for sc, c1, c2 in zip(state_color, colour_1, colour_2):
-                                if c1 == c2:
-                                    A.append(0)
-                                else:
-                                    A.append((sc - c2) / (c1 - c2))
-
-                            non_zero_A = [a for a in A if a != 0]
-                            if non_zero_A:
-                                A = sum(non_zero_A) / len(non_zero_A)
+                            if i < len(class_labels):
+                                class_label = class_labels[n]
+                                class_name = train_metadata_states.thing_classes[class_label]
                             else:
-                                A = 0
+                                class_name = 'Unknown'
 
-                            if (0 + delta) <= A and A <= (1 + delta):
-                                assigned_value = A * (value_1 - value_2) + value_2
-                        output_data.append((file_name, state, assigned_value, assigned_unit))
+                            # Extract RGB color value from the centroid position
+                            centroid_x, centroid_y = int(centroid[2]), int(centroid[1])
+                            rgb_color = tuple(new_im[centroid_y, centroid_x])[::-1]
 
-            file_list = getUniqueFilenames(ocr_df)
-            map_titles = getMapTitleDictionary(ocr_df, file_list)
+                            csvwriter.writerow([image_filename, class_name, object_number, centroid, bounding_box, rgb_color])
 
-            df = pd.DataFrame(columns=['State_Name'])
-            df['State_Name'] = list({state for _, state, _, _ in output_data})
+                progress_updates[3]["status"] = "completed"
+                progress_updates[4]["status"] = "processing"
+                yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
+                print("\nObject-level information saved to CSV file.")
+                print("\nSegmentation of all images completed.")
+                # -----------------------------------------------------------------------------------------------
+                # OCR MODEL FOR TEXT EXTRACTION
+                # OCR model
+                ocr_model = PaddleOCR(lang='en')
 
-            title_to_filename_mapping = {'State_Name': 'File_Name'}
+                df1 = pd.read_csv("outputs/classification.csv")
+                df2 = pd.read_csv("outputs/output_objects.csv")
+                annotations_df = pd.merge(df2, df1, on="file name")
+                img_path = "uploads"
+                data = []
+                for row in annotations_df.itertuples():
+                    file_name = row[1]
+                    map_type = row[4]
+                    title_bounding_box = row[3]
+                    legend_bounding_box = row[2]
+                    data.append((file_name, map_type, title_bounding_box, legend_bounding_box))
 
-            for filename in file_list:
-                dataReqd = getDataForFilename(output_data, filename)
-                # map_title = map_titles[filename]
-                map_title = f"{map_titles[filename]} ({dataReqd[0][3]})"
-                df[map_title] = 0.0
+                def convert_to_doubles(low, upper_bound):
+                    low = lower_bound.replace(",", "")
+                    up = upper_bound.replace(",", "")
 
-                for filename, state, assigned_value, assigned_unit in dataReqd:
-                    df.loc[df['State_Name'] == state, map_title] = assigned_value
-                    title_to_filename_mapping[map_title] = filename
+                    if low and not low[-1].isdigit():
+                        units = low[-1]
+                        low = float(low[:-1])
+                    else:
+                        units = 'u'
+                        low = float(low)
 
-            df = df.drop_duplicates()
-            for col in df.columns[1:]:
-                median_val = df[col].replace(0, pd.NA).median()
-                df[col] = df[col].replace(0, median_val)
+                    if up and not up[-1].isdigit():
+                        units = up[-1]
+                        up = float(up[:-1])
+                    else:
+                        units = 'u'
+                        up = float(up)
 
-            df = df._append(title_to_filename_mapping, ignore_index=True)
-            df.to_csv(output_file_path, index=False)
+                    return low, up, units
+
+                def num_there(s):
+                    return any(i.isdigit() for i in s)
+
+                def only_num(s):
+                    return s.isnumeric()
+
+                def contains_hyphen(text_):
+                    return '-' in text_
+
+                def extract_numbers(test_string):
+                    numeric_string = ''.join(char for char in test_string if char.isdigit() or char == ',')
+                    words = numeric_string.split(',')
+                    numbers = [int(i) for i in words]
+                    return numbers
+
+                complete_data = []
+
+                for ele in data:
+                    file_name = ele[0]
+
+                    map_type = ele[1]
+                    title_bounding_box = ele[2]
+                    legend_bounding_box = ele[3]
+
+                    values = extract_numbers(title_bounding_box)
+
+                    imgPath = os.path.join(upload_dir, file_name)
+                    image = cv2.imread(imgPath)
+
+                    y, x, h, w = values
+
+                    cropped_img = image[y:y + h, x:x + w]
+                    numpydata = asarray(cropped_img)
+
+                    result = ocr_model.ocr(numpydata, cls=False)
+                    map_title = result[0][0][1][0]
+
+                    numerical_info = []
+                    values = extract_numbers(legend_bounding_box)
+                    y, x, h, w = values
+
+                    cropped_img = image[y:y + h, x:x + w]
+                    numpydata = asarray(cropped_img)
+                    image = cropped_img
+
+                    result = ocr_model.ocr(numpydata, cls=False)
+
+                    for line in result:
+                        for word in line:
+                            text = word[1][0]
+
+                            x, y, w, h = word[0][0][0], word[0][0][1], abs(word[0][0][0] - word[0][1][0]), abs(
+                                word[0][1][1] - word[0][2][1])
+
+                            x1 = int(x)
+                            y1 = int(y + h // 2)
+                            x2 = int(x)
+                            y2 = int(y + h // 2 - 1)
+
+                            while all(image[y1, x1] == image[y2, x2]):
+                                x2 -= 1
+                            x3 = x2
+                            while all(image[y1, x1] == image[y2, x3]):
+                                x3 -= 1
+
+                            x2 = (x2 + x3) // 2
+                            color = image[y2, x2]
+
+                            blue, green, red = color
+                            numerical_info += [text] + [red, green, blue]
+
+                    i = 0
+                    value_id = 0
+                    while i < len(numerical_info):
+                        value_id += 1
+
+                        if numerical_info[i] != "N/A" and numerical_info[i] != "-" and any(
+                                char.isdigit() for char in numerical_info[i]):  # modified code from original
+                            values = numerical_info[i].split("-")
+
+                            if len(values) > 1:
+                                lower_bound = values[0]
+                                upper_bound = values[1]
+                            else:
+                                lower_bound = values[0]
+                                upper_bound = values[0]
+                            converted_lower_bound, converted_upper_bound, units = convert_to_doubles(lower_bound, upper_bound)
+                            info = [file_name, map_type, map_title, numerical_info[i + 1], numerical_info[i + 2],
+                                    numerical_info[i + 3], (converted_lower_bound + converted_upper_bound) / 2, units]
+
+                        else:
+                            values = "N/A"
+                            info = [file_name, map_type, map_title, numerical_info[i + 1], numerical_info[i + 2],
+                                    numerical_info[i + 3], values, ""]
+
+                        map_name = img_path.split("/")[-1].split(".")[0]
+                        info = [map_name] + info
+                        complete_data += [info]
+                        i += 4
+
+                output_df = pd.DataFrame(complete_data)
+                df = output_df[output_df[7] != 'N/A']
+
+                combined_column = df.apply(lambda row: f"({row[4]}, {row[5]}, {row[6]})", axis=1)
+                df['RGB color'] = combined_column
+                df.drop([4, 5, 6], axis=1, inplace=True)
+                df.drop([0], axis=1, inplace=True)
+                new_column_names = {
+                    1: 'file_name',
+                    2: 'map_type',
+                    3: 'map_title',
+                    7: 'value',
+                    8: 'unit'
+                }
+                df = df.rename(columns=new_column_names)
+                df.to_csv("outputs/OCR_output.csv", index=False)
+
+                progress_updates[4]["status"] = "completed"
+                progress_updates[5]["status"] = "processing"
+                yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
+                print("OCR output is saved.")
+                # ------------------------------------------------------------------------------------------------
+                # Color-to-Data Mapping
+                ocr_df = pd.read_csv("outputs/OCR_output.csv")
+                seg_df = pd.read_csv("outputs/output_objects_state_segmentation.csv")
+                output_file_path = "outputs/Color_To_Data_Mapping.csv"
+
+                def getDataForFilename(output_data, filename):
+                    return [tuple for tuple in output_data if tuple[0] == filename]
+
+                def getUniqueFilenames(ocr_df):
+                    return ocr_df['file_name'].unique().tolist()
+
+                def getMapTitleDictionary(ocr_df, filenames_list):
+                    map_dict = {}
+                    for filename in filenames_list:
+                        filtered_rows = ocr_df[ocr_df['file_name'] == filename]
+                        row = filtered_rows.iloc[0]
+                        map_dict[filename] = row['map_title']
+
+                    return map_dict
+
+                data_a = []
+                data_b = []
+
+                for row in seg_df.itertuples():
+                    file_name = row[1]
+                    state = row[2]
+                    color_str = row[6]
+                    color = tuple(int(x) for x in color_str.strip('()').split(', '))
+                    data_a.append((file_name, state, color))
+
+                for row in ocr_df.itertuples():
+                    file_name = row[1]
+                    map_type = row[2]
+                    map_title = row[3]
+                    color_str = row[6]
+                    color = tuple(int(x) for x in color_str.strip('()').split(', '))
+                    value = row[4]
+                    if value != "'N/A'":
+                        average_value = float(value)
+                    else:
+                        average_value = 0
+                    unit = row[5]
+                    data_b.append((file_name, map_type, map_title, average_value, unit, color))
+
+                output_data = []
+                for file_name, state, state_color in data_a:
+                    numerical_data = []
+                    for file, map_type, map_title, average_value, unit, color in data_b:
+                        if file_name == file:
+                            numerical_data.append((map_title, map_type, color, average_value, unit))
+                    if numerical_data:
+                        mapType = numerical_data[0][1]
+                        if mapType == "discrete":
+                            min_distance = float('inf')
+                            assigned_value = None
+                            assigned_unit = None
+                            for map_title, map_type, color, average_value, unit in numerical_data:
+                                # calculating Euclidean distance
+                                distance = sum((c1 - c2) ** 2 for c1, c2 in zip(state_color, color))
+                                if distance < min_distance:
+                                    min_distance = distance
+                                    assigned_value = average_value
+                                    assigned_unit = unit
+                            output_data.append((file_name, state, assigned_value, assigned_unit))
+                        elif mapType == "continuous":
+                            assigned_value = 0
+                            assigned_unit = numerical_data[0][4]
+                            for i in range(len(numerical_data) - 1):
+                                delta = 0
+                                if i == 0:
+                                    delta = 1
+                                elif i == len(numerical_data) - 2:
+                                    delta = -0.5
+
+                                colour_1, value_1 = numerical_data[i][2], numerical_data[i][3]
+                                colour_2, value_2 = numerical_data[i + 1][2], numerical_data[i + 1][3]
+
+                                A = []
+                                for sc, c1, c2 in zip(state_color, colour_1, colour_2):
+                                    if c1 == c2:
+                                        A.append(0)
+                                    else:
+                                        A.append((sc - c2) / (c1 - c2))
+
+                                non_zero_A = [a for a in A if a != 0]
+                                if non_zero_A:
+                                    A = sum(non_zero_A) / len(non_zero_A)
+                                else:
+                                    A = 0
+
+                                if (0 + delta) <= A and A <= (1 + delta):
+                                    assigned_value = A * (value_1 - value_2) + value_2
+                            output_data.append((file_name, state, assigned_value, assigned_unit))
+
+                file_list = getUniqueFilenames(ocr_df)
+                map_titles = getMapTitleDictionary(ocr_df, file_list)
+
+                df = pd.DataFrame(columns=['State_Name'])
+                df['State_Name'] = list({state for _, state, _, _ in output_data})
+
+                title_to_filename_mapping = {'State_Name': 'File_Name'}
+
+                for filename in file_list:
+                    dataReqd = getDataForFilename(output_data, filename)
+                    # map_title = map_titles[filename]
+                    map_title = f"{map_titles[filename]} ({dataReqd[0][3]})"
+                    df[map_title] = 0.0
+
+                    for filename, state, assigned_value, assigned_unit in dataReqd:
+                        df.loc[df['State_Name'] == state, map_title] = assigned_value
+                        title_to_filename_mapping[map_title] = filename
+
+                df = df.drop_duplicates()
+                for col in df.columns[1:]:
+                    median_val = df[col].replace(0, pd.NA).median()
+                    df[col] = df[col].replace(0, median_val)
+
+                df = df._append(title_to_filename_mapping, ignore_index=True)
+                df.to_csv(output_file_path, index=False)
 
 
-            # Generate Summary
-            ai_generated_summary = generate_summary(','.join(df.columns[1:]), df.to_csv(index=False, lineterminator='\n'))
-            # Save to file
-            with open(f"{OUTPUT_FOLDER}/ai_generated_summary.txt", "w", encoding="utf-8") as file:
-                file.write(ai_generated_summary)
+                # Generate Summary
+                ai_generated_summary = generate_summary(','.join(df.columns[1:]), df.to_csv(index=False, lineterminator='\n'))
+                # Save to file
+                with open(f"{OUTPUT_FOLDER}/ai_generated_summary.txt", "w", encoding="utf-8") as file:
+                    file.write(ai_generated_summary)
 
 
-            progress_updates[5]["status"] = "completed"
-            yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
-            print("\nColor-to-data mapping completed")
-            # ------------------------------------------------------------------------------------------------
-            # Sending results to the frontend
-            results = df.to_dict(orient='records')
-            # print(results)
+                progress_updates[5]["status"] = "completed"
+                yield f"data: {json.dumps({'progress': progress_updates})}\n\n"
+                print("\nColor-to-data mapping completed")
+                # ------------------------------------------------------------------------------------------------
+                # Sending results to the frontend
+                results = df.to_dict(orient='records')
+                # print(results)
 
 
-            final_data = json.dumps({
-                "Results": results,
-                "Summary": ai_generated_summary,
-                "progress": progress_updates,
-                "status": "success",
-            })
-            # Storing the results in the RESULTS_FOLDER
-            archive_results(session_id)
+                final_data = json.dumps({
+                    "Results": results,
+                    "Summary": ai_generated_summary,
+                    "progress": progress_updates,
+                    "status": "success",
+                })
+                # Storing the results in the RESULTS_FOLDER
+                archive_results(session_id)
 
-            view_link = f"{os.getenv('APP_URL')}/?session_id={session_id}"
-            # Get user email from session data
-            if final_data:
-                user_email = session["user"]["email"]
-                user_email = user_email.strip()
-                print("USER EMAIL: ",user_email)
-                message = Mail(
-                    from_email=os.getenv('MAIL_DEFAULT_SENDER'),
-                    to_emails=user_email,
-                    subject='Choropleth Analysis Complete',
-                    html_content=f"""
-                    <h1>Analysis Complete</h1>
-                    <p>Your choropleth map analysis is ready:</p>
-                    <a href="{view_link}" style="
-                        background: #00c3ff;
-                        color: white;
-                        padding: 10px 20px;
-                        text-decoration: none;
-                        border-radius: 5px;
-                        display: inline-block;
-                        margin-top: 15px;
-                    ">View Results</a>
-                    """)
-                try:
-                    sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
-                    response = sg.send(message)
-                    print(response.status_code)
-                    print(response.body)
-                    print(response.headers)
-                except Exception as e:
-                    print(e.message)
+                yield f"data: {final_data}\n\n"
+
+                view_link = f"{os.getenv('APP_URL')}/?session_id={session_id}"
+                # Get user email from session data
+                if final_data:
+                    user_email = session["user"]["email"]
+                    user_email = user_email.strip()
+                    print("USER EMAIL: ",user_email)
+                    message = Mail(
+                        from_email=os.getenv('MAIL_DEFAULT_SENDER'),
+                        to_emails=user_email,
+                        subject='Choropleth Analysis Complete',
+                        html_content=f"""
+                        <h1>Analysis Complete</h1>
+                        <p>Your choropleth map analysis is ready:</p>
+                        <a href="{view_link}" style="
+                            background: #00c3ff;
+                            color: white;
+                            padding: 10px 20px;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            display: inline-block;
+                            margin-top: 15px;
+                        ">View Results</a>
+                        """)
+                    try:
+                        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+                        response = sg.send(message)
+                        print(response.status_code)
+                        print(response.body)
+                        print(response.headers)
+                    except Exception as e:
+                        print(e.message)
                 
                 
             
 
             delete_path(upload_dir)
-            yield f"data: {final_data}\n\n"
             sys.stdout.flush()
 
     return Response(stream_with_context(generate_progress()), mimetype="text/event-stream")
@@ -867,6 +895,6 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",debug=True, use_reloader=False)
+    app.run(host="0.0.0.0",debug=True, use_reloader=True)
 
 
