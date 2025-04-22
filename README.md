@@ -17,6 +17,7 @@
 - Footer w/o tailwindscss
 
 - ensure proper permissions for folders
+- LOGGING
 
 ### Security
 - check firewall exposed ports

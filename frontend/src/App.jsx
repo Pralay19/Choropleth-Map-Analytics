@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef} from "react";
+import {useState, useEffect, useRef, Fragment} from "react";
 import { 
   BrowserRouter as Router,
   Routes,
@@ -26,6 +26,7 @@ import {Dialog} from "primereact/dialog";
 import TypewriterMarkdown from "./components/TypewriterMarkdown.jsx";
 import {Toast} from "primereact/toast";
 import { Messages } from 'primereact/messages';
+import {ProgressBar} from "primereact/progressbar";
 
 
 function App() {
@@ -85,6 +86,10 @@ function App() {
      const uploadResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/predict`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
          withCredentials: true,
+         onUploadProgress: (progressEvent) => {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percent);
+        }
       });
 
       const newSessionId = uploadResponse.data.session_id; // Unique session ID
@@ -322,6 +327,8 @@ function App() {
 
     const dropDownRef = useRef(null)
 
+    const [uploadProgress, setUploadProgress] = useState(0);
+
   return (
       <PrimeReactProvider value={primeReactConfig}>
           <Toast ref={toast} />
@@ -401,6 +408,7 @@ function App() {
                 {/* File Upload Form */}
                 {progress.length<=0 && !sessionID && (<div className="form-container">
                   <FileUpload
+                      disabled={uploadProgress>0}
                       ref={fileuploadRef}
                       multiple
                       accept="image/*"
@@ -410,11 +418,19 @@ function App() {
                       onRemove={(e) => setFiles(files.filter((f) => f !== e.file))}
                       customUpload={true}
                       uploadHandler={handleUpload}
+                      progressBarTemplate={<ProgressBar
+                          value={uploadProgress} style={{width: "100%", height: 20}}
+                          pt={{
+                              root: {
+                                  style: {borderRadius: 0}
+                              }
+                          }}
+                      ></ProgressBar>}
                   />
                 </div>)}
 
                 
-                
+
 
 
                 {progress && progress.length > 0 && !error && renderStepper()}
