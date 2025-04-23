@@ -49,10 +49,6 @@ from flask_limiter.util import get_remote_address
 from datetime import timedelta
 
 
-
-
-
-load_dotenv()
 ENVIRONMENT = os.getenv("ENVIRONMENT")
 
 app = Flask(__name__, static_folder="static/frontend")
