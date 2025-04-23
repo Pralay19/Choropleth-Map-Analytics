@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef, Fragment} from "react";
+import {useState, useEffect, useRef} from "react";
 import { 
   BrowserRouter as Router,
   Routes,
@@ -82,7 +82,7 @@ function App() {
       setResults(null);
       setAIGeneratedSummary(null)
       setSessionID(null);
-      
+
      const uploadResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/predict`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
          withCredentials: true,
@@ -91,6 +91,9 @@ function App() {
           setUploadProgress(percent);
         }
       });
+
+        msg.current.clear();
+        msg.current.show({ id: '2', sticky: true, severity: 'info', summary: 'Info', detail: "Results will be sent to your email, even if you leave now.", closable: true });
 
       const newSessionId = uploadResponse.data.session_id; // Unique session ID
       console.log("Session ID:", newSessionId," type:",typeof(newSessionId));
@@ -109,6 +112,10 @@ function App() {
             setResults(data.Results);
             setAIGeneratedSummary(data.Summary);
             source.close();
+          }
+          if(data.status==="success") {
+            msg.current.clear();
+            msg.current.show({ id: '3', sticky: true, severity: 'success', summary: 'Info', detail: "Results are sent to your email.", closable: true });
           }
           if(data.status==="fail"){
             setResults(null);
@@ -319,8 +326,8 @@ function App() {
     }
     
     const showMsg = (error) => {
+        msg.current.clear();
         msg.current.show({ id: '1', sticky: true, severity: 'error', summary: 'Error', detail: error, closable: false });
-        
     }
 
   // ============================================
@@ -435,6 +442,18 @@ function App() {
 
                 {progress && progress.length > 0 && !error && renderStepper()}
 
+                  <Messages ref={msg}
+                    style={{marginTop: 30}}
+                    pt={{
+                        root: {
+                            style: {
+                                width: "fit-content",
+                                marginInline: "auto"
+                            }
+                        }
+                    }}
+                  />
+
                 {results && (
                   <div className="results-section">
                     <h3 className="subtitle">Results
@@ -445,7 +464,7 @@ function App() {
                     {renderTable()}
                   
                     <div className="action-buttons">
-                      <Button label="New Analysis" onClick={() => window.location.reload()} icon="pi pi-refresh" severity="help" rounded raised/>
+                      <Button label="New Analysis" onClick={() => window.location.href = "/"} icon="pi pi-refresh" severity="help" rounded raised/>
                       <Link to="/visualize">
                         <Button label="View Visualizations" onClick={handleVisualizeClick} icon="pi pi-chart-bar" severity="info" rounded raised/>
                       </Link>
@@ -457,9 +476,8 @@ function App() {
                 )}
 
                 {/* Error Handling */}
-                <Messages ref={msg}  />
                 {error && <div style={{marginBlock: "20px"}}>
-                      <Button label="Try Again" icon="pi pi-refresh" onClick={() => window.location.reload()} severity="danger" rounded raised/>
+                      <Button label="Try Again" icon="pi pi-refresh" onClick={() => window.location.href = "/"} severity="danger" rounded raised/>
                   </div>}
               </>) : (
                 <div style={{marginBlock: "20px"}}>
