@@ -53,15 +53,18 @@ from datetime import timedelta
 
 
 load_dotenv()
+ENVIRONMENT = os.getenv("ENVIRONMENT")
+
 app = Flask(__name__, static_folder="static/frontend")
 app.secret_key = os.urandom(24)     # session secret
 
-CORS(app, supports_credentials=True)
+if ENVIRONMENT == "DEBUG":
+    CORS(app, supports_credentials=True)
 
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,   # Prevent JS access
-    SESSION_COOKIE_SECURE=False,     # Only over HTTPS
+    SESSION_COOKIE_SECURE= (ENVIRONMENT == "PRODUCTION"),     # Only over HTTPS
     SESSION_COOKIE_SAMESITE='Lax',   # Protect against CSRF
     PERMANENT_SESSION_LIFETIME=timedelta(days=7)
 )
@@ -912,6 +915,6 @@ def serve_react(path):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",debug=False, use_reloader=False)
+    app.run(host="0.0.0.0",debug= (ENVIRONMENT == "DEBUG"), use_reloader=False)
 
 

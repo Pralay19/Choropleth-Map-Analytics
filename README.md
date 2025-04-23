@@ -15,6 +15,7 @@
 - make pages responsive to screen sizes
 - 404 Page
 - Footer w/o tailwindscss
+- LOGO/Icon
 
 - ensure proper permissions for folders
 - LOGGING
