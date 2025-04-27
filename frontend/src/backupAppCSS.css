@@ -6,7 +6,8 @@
 .app-container {
     min-height: 100vh;
     margin: 0;
-    padding: 50px;
+    padding-inline: 50px;
+    padding-block: 20px;
     /* background: radial-gradient(circle, #000000 0%, #0d0d0d 50%, #1a1a1a 100%); */
     
     background: black;
@@ -179,11 +180,12 @@
   }
   
   
+  
   .check-mark {
     font-size: 18px;
     color: #fff;
   }
-  
+
   
   .processing-animation {
     width: 10px;
@@ -221,12 +223,12 @@
   }
   
   .results-table {
-    margin: 20px auto;
+    /*margin: 20px auto;*/
     border-collapse: collapse;
-    width: 90%;
+    width: 100%;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    overflow: hidden;
+    /*overflow: hidden;*/
   }
   
   .results-table th {
@@ -235,6 +237,8 @@
     color: #fff;
     text-align: left;
     font-weight: 600;
+    position: sticky;
+    top: 0;
   }
   
   .results-table td {
@@ -251,3 +255,48 @@
     background: #1a1919;
   }
   
+/* FOR THE AI BUTTON */
+.glow-button {
+  color: rgb(0, 0, 0);
+  border: 2px solid rgb(0, 195, 255);
+  border-radius: 7px;
+  padding: 10px 20px;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-size: 14px;
+  background: rgb(0, 195, 255);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  margin: 0 5px;
+}
+
+.glow-button:hover {
+  background: transparent;
+  color: white;
+  border-color: white;
+  box-shadow: 0 0 15px rgb(0, 194, 253);
+}
+
+.stars {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: white;
+  transform: rotate(45deg);
+  box-shadow: 0 0 10px white;
+  opacity: 1;
+  transition: all 0.5s ease-out;
+}
+
+.stars.large {
+  width: 10px;
+  height: 10px;
+}
+
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /*margin-top: 50px;*/
+}
