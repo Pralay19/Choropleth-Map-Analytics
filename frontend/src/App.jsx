@@ -270,6 +270,7 @@ function App() {
         const setupEmailedResults = async () => {
             const sessionId = params.get('session_id');
           setSessionID(sessionId)
+            setAISummaryAnimate(false);
 
           try {
               const resCsv = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/static/results/${sessionId}/data.csv`, { responseType: 'text' });
