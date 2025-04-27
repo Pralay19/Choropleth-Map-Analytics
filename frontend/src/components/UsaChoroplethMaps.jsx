@@ -8,8 +8,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Ripple } from 'primereact/ripple';
 import { Dialog } from 'primereact/dialog';
-import PlotsFromData from "./PlotsFromData.jsx";
-import CombinedPlotsFromData from "./CombinedPlotsFromData.jsx";
+import PlotsFromData from "./PlotsFromData";
+import CombinedPlotsFromData from "./CombinedPlotsFromData";
 
 const UsaChoroplethMaps = ({ parsedData, files=[] }) => {
     const [maps, setMaps] = useState([]);

@@ -7,8 +7,8 @@ import {
 } from 'react-router-dom';
 import axios from "axios";
 import "./App.css"; 
-import UsaChoroplethMaps from "./UsaChoroplethMaps.jsx";
-import GlowingButton from './GlowingButton';
+import UsaChoroplethMaps from "./components/UsaChoroplethMaps";
+import GlowingButton from './components/GlowingButton';
 import "primereact/resources/themes/lara-dark-teal/theme.css";
 // import "primereact/resources/themes/lara-light-teal/fonts/InterVariable.woff2"
 import "primeicons/primeicons.css"
