@@ -486,14 +486,14 @@ function App() {
                 </div>
                 )}
 
-                <Dialog header="AI Generated Summary" visible={aiSummaryVisible} style={{ width: '90vw' }}
+                <Dialog header="AI Generated Summary" visible={aiSummaryVisible} style={{ width: '90vw', maxWidth: 1000 }}
                         onHide={() => {
                             if (!aiSummaryVisible) return;
                             setAISummaryVisible(false);
                             setAISummaryAnimate(false)
                         }}
                 >
-                    <TypewriterMarkdown text={aiGenerateSummary} speed={50} animate={aiSummaryAnimate} />
+                    <TypewriterMarkdown text={aiGenerateSummary} speed={80} animate={aiSummaryAnimate} />
                 </Dialog>
               </>
             }

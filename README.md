@@ -1,3 +1,6 @@
+### Fix
+- Show error messages correctly
+
 ### Production Changes
 
 - Change Google OAuth credentials
