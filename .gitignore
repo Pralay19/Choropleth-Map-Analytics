@@ -1,17 +1,22 @@
-detectron2_env
-model
-uploads
-outputs
 .idea
 .env
-sendgrid.env
-emails
+nohup.out
+__pycache__
+
+detectron2_env
+
+
+backend/model/*
+!backend/model/.gitkeep
+
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+backend/outputs/*
+!backend/outputs/.gitkeep
 
 backend/static/results/*
 !backend/static/results/.gitkeep
-backend/utils/__pycache__/__init__.cpython-39.pyc
-backend/utils/__pycache__/summary_helper.cpython-39.pyc
 
-backend/static/frontend
-
-nohup.out
+backend/static/frontend/*
+!backend/static/frontend/.gitkeep
